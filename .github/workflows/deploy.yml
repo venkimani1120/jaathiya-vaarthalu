@@ -1,0 +1,43 @@
+# Runs the tests on every push and pull request. A push to main that passes is deployed to the server.
+# Deploy is skipped until the repo variable SSH_HOST is set (see "Deploy" in README.md).
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.SSH_HOST != ''
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.SSH_KNOWN_HOSTS }}
+          HOST: ${{ vars.SSH_HOST }}
+          DEPLOY_USER: ${{ vars.SSH_USER || 'jv' }}
+          PORT: ${{ vars.SSH_PORT || '22' }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -p "$PORT" "$DEPLOY_USER@$HOST" 'bash /srv/jaathiya-vaarthalu/deploy/deploy.sh'

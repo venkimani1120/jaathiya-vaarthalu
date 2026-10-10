@@ -41,13 +41,36 @@ WhatsApp's official Business API cannot read ordinary group chats, so the feed u
 4. In `.env`, set `WAHA_URL=http://127.0.0.1:3001`, `WAHA_API_KEY`, `WHATSAPP_GROUPS`. Optionally also set `WHATSAPP_SENDERS` (only these reporters' numbers), `WHATSAPP_AUTHOR_EMAIL` (the user the drafts belong to) and `WHATSAPP_POLL_MINUTES`. Then restart the site.
 5. Post a test story in the group, then click **ఇప్పుడే తెచ్చు** (pull now) in the admin **వాట్సాప్** tab.
 
-## Deploy (Ubuntu VPS)
-1. Install Node 22, nginx, sqlite3, poppler-utils; copy the project to `/srv/jaathiya-vaarthalu`; `npm install --omit=dev`.
-2. `cp .env.example .env` and fill it in (`SITE_URL`, `SESSION_SECRET`, admin login); run `npm run seed`.
-3. `pm2 start deploy/pm2.config.js && pm2 save && pm2 startup`.
-4. Copy `deploy/nginx.conf` to `/etc/nginx/sites-available/`, edit the domain, enable it, then `sudo certbot --nginx`.
-5. Add the cron line from `deploy/backup.sh`; set up rclone for off-server copies.
-6. Submit `/sitemap.xml` and `/news-sitemap.xml` in Google Search Console.
+## Deploy (Ubuntu server + GitHub Actions)
+The site runs on its own Linux server (Ubuntu 22.04 or 24.04, 1 GB RAM is enough). GitHub Pages can't host it because it needs Node and a database. After the setup below, every push to `main` that passes the tests goes live automatically.
+
+**1. Get a server and a domain.** Create an Ubuntu server (DigitalOcean, Hostinger VPS, AWS Lightsail, etc.) and note its IP. In your domain's DNS, add an `A` record pointing the domain (e.g. `news.example.com`) at that IP.
+
+**2. Make a key for GitHub Actions** (on your computer):
+```
+ssh-keygen -t ed25519 -N "" -C "github-actions" -f ~/.ssh/jv_actions
+```
+
+**3. Set up the server** (from the project folder on your computer):
+```
+scp deploy/setup-server.sh root@<server-ip>:
+ssh root@<server-ip> "DOMAIN=news.example.com ADMIN_EMAIL=you@example.com GHA_PUBKEY='$(cat ~/.ssh/jv_actions.pub)' bash setup-server.sh"
+```
+The first run stops and prints a **deploy key**. Add it on GitHub under the repo's Settings > Deploy keys > Add deploy key (read-only), then run the same `ssh` command again. The script installs Node 22, nginx, pm2, poppler, the firewall, HTTPS and the nightly backup, creates `.env` with a random session secret, and prints the admin login once. Write it down.
+
+**4. Connect GitHub Actions.** In the repo, go to Settings > Secrets and variables > Actions:
+- Secret `SSH_KEY`: the output of `cat ~/.ssh/jv_actions` (the private key).
+- Variable `SSH_HOST`: the server IP.
+- Variable `SSH_KNOWN_HOSTS`: the output of `ssh-keyscan <server-ip>`.
+- Optional variables: `SSH_USER` (default `jv`) and `SSH_PORT` (default `22`).
+
+Until `SSH_HOST` is set, the workflow only runs the tests. To deploy without a push, use Actions > Test and deploy > Run workflow. To deploy by hand, run `ssh jv@<server-ip> 'bash /srv/jaathiya-vaarthalu/deploy/deploy.sh'`.
+
+**Notes**
+- Change settings in the repo (for example `config/site.json`) and push. Edits made directly on the server are overwritten by the next deploy. Only `.env`, `data/` and `uploads/` live on the server alone.
+- To change `.env`, run `ssh jv@<server-ip>`, edit `/srv/jaathiya-vaarthalu/.env`, then `pm2 reload jaathiya-vaarthalu --update-env`.
+- Logs: `pm2 logs jaathiya-vaarthalu`. Backups go to `/var/backups/jaathiya-vaarthalu` (14 days). Set up rclone in `deploy/backup.sh` for copies off the server.
+- Submit `/sitemap.xml` and `/news-sitemap.xml` in Google Search Console.
 
 ## Before launch
 - Add the Telugu font files listed in `public/fonts/README.txt` (Inter for English is included).
