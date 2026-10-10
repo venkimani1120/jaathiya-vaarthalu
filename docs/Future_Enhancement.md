@@ -2,6 +2,8 @@
 
 Status: plan, not started. Written 2026-10-10.
 
+> **Out of date on the `static-setup` branch.** This plan was written for the server version (Express, SQLite, admin panel). The static GitHub Pages version has no server or database, so its file references and phases no longer apply as written.
+
 ## Goal
 
 Turn this codebase into a reusable, versioned library so other newspapers and organisations can run their own site with their own name, logo, colours, fonts, languages, sections, features and home-page layout.

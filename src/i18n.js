@@ -1,5 +1,5 @@
 // Public-site UI text in English (default) and Telugu. Article text is shown as the editor wrote it.
-// The visitor's choice is the `lang` cookie, set by GET /lang/:code (see server/render.js).
+// The build writes every page twice: English at /, Telugu under /te/ (see src/render.js).
 const LANGS = ['en', 'te'];
 
 const STR = {
@@ -10,8 +10,6 @@ const STR = {
     search: 'Search', searchPh: 'Search news', epaper: 'E-paper', advertise: 'Advertise', subscribe: 'Subscribe',
     todaysPaper: "Today's paper", breaking: 'Breaking',
     defaultDesc: (name, tag) => `${name}, ${tag}. Latest news and the daily e-paper.`,
-    newsletterH: 'Top stories in your inbox every day', newsletterP: 'Join our newsletter. It is free.',
-    email: 'Email', yourEmail: 'Your email', join: 'Join',
     services: 'Services', advertiseWithUs: 'Advertise with us', printSub: 'Subscribe to the paper', contact: 'Contact',
     established: 'Established', rights: 'All rights reserved.',
     notFoundT: 'Page not found', notFoundP: 'We could not find this page.', goHome: 'Go to the home page',
@@ -25,11 +23,12 @@ const STR = {
     promoAdH: 'Put your business in front of our readers', promoAdP: 'Advertise in the paper and on the website.', promoAdBtn: 'See ad sizes →',
     promoSubH: (name) => `${name} at your door`, promoSubP: 'Subscribe to the printed paper.', promoSubBtn: 'Subscription details →',
     moreNews: 'More news', searchMin: 'Type at least 3 characters.', searchH: (q) => `Search: ${q}`,
-    epIntro: 'Read the printed pages for free. Pick a date for older editions.', date: 'Date', view: 'View', noEdition: 'There is no e-paper for this date. Try another date.', readPdf: 'Read PDF',
+    searching: 'Searching…', noResults: 'No stories found for this search.', searchNoJs: 'Search needs JavaScript. Turn it on, or browse the sections.',
+    epIntro: 'Read the printed pages for free. Older editions are listed below.', epArchive: 'Older editions', noEdition: 'No e-paper yet. Check back soon.', readPdf: 'Read PDF',
     adLabel: 'Advertisement', askPrice: 'Contact us for the price',
-    enqP: 'Fill in the form and our team will call you with the details.', callDirect: 'To talk to us directly:',
-    name: 'Name', phoneNo: 'Phone number', emailOpt: 'Email (optional)', adSize: 'Ad size', plan: 'Subscription plan',
-    business: 'Business name (optional)', place: 'Your town / area', message: 'Message (optional)', send: 'Send enquiry',
+    enqP: 'Fill in the form and press the button. WhatsApp opens with your enquiry ready to send.', callDirect: 'To talk to us directly:',
+    name: 'Name', adSize: 'Ad size', plan: 'Subscription plan',
+    business: 'Business name (optional)', place: 'Your town / area', message: 'Message (optional)', send: 'Send enquiry', sendWa: 'Send on WhatsApp',
     adTitle: 'Advertise with us', adDesc: (name) => `Advertise in ${name}, in print and online.`, adKicker: 'Advertising',
     adH: (name) => `Put your business in front of ${name} readers`, adP: 'In the printed paper, on the website, or both. From a small classified to a full page.',
     callUs: 'Call us', adValues: [['layers', 'Print + website', 'Appear in the paper and online at the same time.'], ['phone', 'Easy booking', 'Call us or fill in the form and we handle the rest.'], ['ad', 'Any budget', 'From small classifieds to big campaigns.']],
@@ -39,13 +38,6 @@ const STR = {
     askSub: 'Ask about a subscription', seeEpaper: 'Try the e-paper first',
     subValues: [['home', 'Home delivery', 'The paper at your door every morning.'], ['paper', 'E-paper too', 'Read online for free when you are away.'], ['phone', 'Easy to start', 'Fill in the form and we sort the rest over the phone.']],
     choosePlan: 'Choose a plan', pickPlan: 'Choose this plan', subEnqH: 'Subscription enquiry',
-    thanks: {
-      newsletter: ['Thank you!', 'You have joined our newsletter.'],
-      enquiry: ['Thank you!', 'We have received your enquiry and will call you soon.'],
-      invalid: ['Some details are missing', 'Please give your name and a valid phone number or email, then try again.'],
-      limit: ['Please wait a little', 'Too many attempts. Please try again later.'],
-    },
-    goBack: 'Go back',
   },
   te: {
     locale: 'te-IN', ogLocale: 'te_IN', switchTo: 'en', switchLabel: 'English', switchAria: 'View in English',
@@ -54,8 +46,6 @@ const STR = {
     search: 'వెతకండి', searchPh: 'వార్తలు వెతకండి', epaper: 'ఈ-పేపర్', advertise: 'ప్రకటనలు', subscribe: 'చందా',
     todaysPaper: 'నేటి పేపర్', breaking: 'తాజా',
     defaultDesc: (name, tag) => `${name}, ${tag}. తాజా వార్తలు మరియు ఈ-పేపర్.`,
-    newsletterH: 'ప్రతి రోజు ముఖ్య వార్తలు మీ ఇమెయిల్‌కి', newsletterP: 'మా న్యూస్‌లెటర్‌కి ఉచితంగా చేరండి.',
-    email: 'ఇమెయిల్', yourEmail: 'మీ ఇమెయిల్', join: 'చేరండి',
     services: 'సేవలు', advertiseWithUs: 'ప్రకటనలు ఇవ్వండి', printSub: 'పత్రికకు చందా', contact: 'సంప్రదించండి',
     established: 'స్థాపన', rights: 'అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.',
     notFoundT: 'పేజీ కనబడలేదు', notFoundP: 'ఈ పేజీ కనబడలేదు.', goHome: 'మొదటి పేజీకి వెళ్ళండి',
@@ -69,11 +59,12 @@ const STR = {
     promoAdH: 'మీ వ్యాపారాన్ని పాఠకుల ముందుకు', promoAdP: 'పత్రికలో మరియు వెబ్‌సైట్‌లో ప్రకటన ఇవ్వండి.', promoAdBtn: 'ప్రకటన సైజులు చూడండి →',
     promoSubH: (name) => `${name} మీ ఇంటికే`, promoSubP: 'ముద్రిత పత్రికకు చందా కట్టండి.', promoSubBtn: 'చందా వివరాలు →',
     moreNews: 'ఇతర వార్తలు', searchMin: 'కనీసం 3 అక్షరాలు టైప్ చేయండి.', searchH: (q) => `శోధన: ${q}`,
-    epIntro: 'ముద్రిత పత్రిక పేజీలను ఉచితంగా చదవండి. పాత సంచికల కోసం తేదీ ఎంచుకోండి.', date: 'తేదీ', view: 'చూడండి', noEdition: 'ఈ తేదీకి ఈ-పేపర్ లేదు. మరో తేదీ ఎంచుకోండి.', readPdf: 'PDF చదవండి',
+    searching: 'వెతుకుతున్నాం…', noResults: 'ఈ శోధనకు వార్తలు దొరకలేదు.', searchNoJs: 'శోధనకు జావాస్క్రిప్ట్ అవసరం. దాన్ని ఆన్ చేయండి, లేదా విభాగాలు చూడండి.',
+    epIntro: 'ముద్రిత పత్రిక పేజీలను ఉచితంగా చదవండి. పాత సంచికలు కింద ఉన్నాయి.', epArchive: 'పాత సంచికలు', noEdition: 'ఇంకా ఈ-పేపర్ లేదు. త్వరలో చూడండి.', readPdf: 'PDF చదవండి',
     adLabel: 'ప్రకటన', askPrice: 'ధర కోసం సంప్రదించండి',
-    enqP: 'ఫారం నింపండి. మా బృందం మీకు ఫోన్ చేసి వివరాలు చెబుతుంది.', callDirect: 'నేరుగా మాట్లాడాలంటే:',
-    name: 'పేరు', phoneNo: 'ఫోన్ నంబర్', emailOpt: 'ఇమెయిల్ (ఐచ్ఛికం)', adSize: 'ప్రకటన సైజు', plan: 'చందా ప్లాన్',
-    business: 'వ్యాపారం పేరు (ఐచ్ఛికం)', place: 'మీ ఊరు / ప్రాంతం', message: 'సందేశం (ఐచ్ఛికం)', send: 'విచారణ పంపండి',
+    enqP: 'ఫారం నింపి బటన్ నొక్కండి. మీ విచారణతో వాట్సాప్ తెరుచుకుంటుంది, అక్కడ పంపండి.', callDirect: 'నేరుగా మాట్లాడాలంటే:',
+    name: 'పేరు', adSize: 'ప్రకటన సైజు', plan: 'చందా ప్లాన్',
+    business: 'వ్యాపారం పేరు (ఐచ్ఛికం)', place: 'మీ ఊరు / ప్రాంతం', message: 'సందేశం (ఐచ్ఛికం)', send: 'విచారణ పంపండి', sendWa: 'వాట్సాప్‌లో పంపండి',
     adTitle: 'ప్రకటనలు ఇవ్వండి', adDesc: (name) => `${name} పత్రికలో మరియు వెబ్‌సైట్‌లో ప్రకటన ఇవ్వండి.`, adKicker: 'ప్రకటనలు',
     adH: (name) => `మీ వ్యాపారాన్ని ${name} పాఠకుల ముందుకు తీసుకెళ్ళండి`, adP: 'ముద్రిత పత్రికలో, వెబ్‌సైట్‌లో లేదా రెండింటిలోనూ. చిన్న క్లాసిఫైడ్ నుంచి పూర్తి పేజీ వరకు.',
     callUs: 'కాల్ చేయండి', adValues: [['layers', 'పత్రిక + వెబ్‌సైట్', 'ముద్రణలో మరియు ఆన్‌లైన్‌లో ఒకేసారి కనిపించండి.'], ['phone', 'సులభ బుకింగ్', 'ఫోన్ చేయండి లేదా ఫారం నింపండి, మిగతాది మేము చూసుకుంటాం.'], ['ad', 'ఏ బడ్జెట్‌కైనా', 'చిన్న ప్రకటనల నుంచి పెద్ద ప్రచారాల వరకు.']],
@@ -83,19 +74,11 @@ const STR = {
     askSub: 'చందా కోసం అడగండి', seeEpaper: 'ముందు ఈ-పేపర్ చూడండి',
     subValues: [['home', 'ఇంటి వద్దకే', 'ప్రతి ఉదయం పత్రిక మీ ఇంటికి.'], ['paper', 'ఈ-పేపర్ కూడా', 'ప్రయాణంలో ఉన్నా ఆన్‌లైన్‌లో ఉచితంగా చదవండి.'], ['phone', 'సులభంగా మొదలుపెట్టండి', 'ఫారం నింపండి, మిగతాది ఫోన్‌లో మాట్లాడుకుందాం.']],
     choosePlan: 'ప్లాన్ ఎంచుకోండి', pickPlan: 'ఈ ప్లాన్ ఎంచుకోండి', subEnqH: 'చందా కోసం విచారణ',
-    thanks: {
-      newsletter: ['ధన్యవాదాలు!', 'మీరు మా న్యూస్‌లెటర్‌లో చేరారు.'],
-      enquiry: ['ధన్యవాదాలు!', 'మీ విచారణ మాకు అందింది. త్వరలో మీకు ఫోన్ చేస్తాం.'],
-      invalid: ['వివరాలు సరిగా లేవు', 'దయచేసి పేరు, సరైన ఫోన్ నంబర్ / ఇమెయిల్ ఇచ్చి మళ్ళీ ప్రయత్నించండి.'],
-      limit: ['కొంచెం ఆగండి', 'చాలా సార్లు ప్రయత్నించారు. కాసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.'],
-    },
-    goBack: 'వెనక్కి వెళ్ళండి',
   },
 };
 
-const langOf = (req) => (/(?:^|;\s*)lang=te(?:;|$)/.test((req.headers && req.headers.cookie) || '') ? 'te' : 'en');
 // Picks the `<field>_en` / `<field>_te` value for the language, falling back to Telugu (the original data).
 // Section names use secName in render.js instead (English is their main name)
 const pick = (obj, field, lang) => (obj && (obj[`${field}_${lang}`] || obj[`${field}_te`])) || '';
 
-module.exports = { LANGS, STR, langOf, pick };
+module.exports = { LANGS, STR, pick };

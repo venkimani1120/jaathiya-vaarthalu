@@ -1,7 +1,7 @@
 # Jaathiya Vaarthalu: typography and UI design
 
 **Visual reference:** newspaperclub.com (white pages, bold sans headlines, pill buttons, hero carousel,
-icon value rows, card grids, coloured promo bands, newsletter band, dark multi-column footer).
+icon value rows, card grids, coloured promo bands, dark multi-column footer).
 **Language:** English UI by default with a Telugu toggle (`lang` cookie). Article text is shown as written.
 
 **Audience:** Telugu readers, mostly on mid/low-end Android phones over patchy networks.

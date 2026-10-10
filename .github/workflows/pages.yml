@@ -1,0 +1,53 @@
+# Tests and builds the site on every push and pull request; publishes main to GitHub Pages.
+# The hourly run publishes stories whose published_at time has arrived and starts/ends ads on their dates.
+# One-time setup: repo Settings > Pages > Build and deployment > Source: "GitHub Actions".
+name: Build and publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - id: pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      # base_url is https://<user>.github.io/<repo>, or the custom domain once one is set in Settings > Pages
+      - run: npm run build
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url || 'https://example.github.io/preview' }}
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

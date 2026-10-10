@@ -1,24 +1,14 @@
 {
   "name": "jaathiya-vaarthalu",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "Static site for the Jaathiya Vaarthalu Telugu daily, built from JSON content for GitHub Pages",
   "scripts": {
-    "start": "node --env-file=.env server/index.js",
-    "dev": "node --env-file=.env --watch server/index.js",
-    "seed": "node --env-file=.env server/db/seed.js",
-    "test": "node --no-warnings tests/render.smoke.js && node --no-warnings tests/notify.test.js && node --no-warnings tests/whatsapp.test.js"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.3.1",
-    "express-session": "^1.18.0",
-    "helmet": "^7.1.0",
-    "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3",
-    "sanitize-html": "^2.13.0"
+    "build": "node src/build.js",
+    "dev": "node --watch-path=src --watch-path=content --watch-path=public src/dev.js",
+    "test": "node tests/build.test.js"
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22"
   }
 }

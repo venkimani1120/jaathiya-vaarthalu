@@ -1,0 +1,8 @@
+[
+  { "slug": "politics", "name_en": "Politics", "name_te": "రాజకీయాలు" },
+  { "slug": "state", "name_en": "State", "name_te": "రాష్ట్రం" },
+  { "slug": "national", "name_en": "National", "name_te": "జాతీయం" },
+  { "slug": "sports", "name_en": "Sports", "name_te": "క్రీడలు" },
+  { "slug": "cinema", "name_en": "Cinema", "name_te": "సినిమా" },
+  { "slug": "business", "name_en": "Business", "name_te": "వ్యాపారం" }
+]

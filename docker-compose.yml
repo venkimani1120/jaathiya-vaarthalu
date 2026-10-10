@@ -1,9 +1,0 @@
-services:
-  web:
-    build: .
-    restart: unless-stopped
-    ports: ["127.0.0.1:3000:3000"]   # put Nginx in front
-    env_file: .env
-    volumes:
-      - ./data:/app/data
-      - ./uploads:/app/uploads

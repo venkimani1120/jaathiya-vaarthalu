@@ -46,3 +46,24 @@ document.querySelectorAll('.hero').forEach((hero) => {
   setInterval(tick, 6000);
   document.addEventListener('visibilitychange', () => (hold = document.hidden));
 });
+
+// Enquiry forms (advertise / subscribe) open WhatsApp with the filled-in fields as the message.
+// "Choose this size/plan" links pass ?size= / ?plan=, which picks that option in the form.
+document.querySelectorAll('.wa-form').forEach((form) => {
+  const params = new URLSearchParams(location.search);
+  form.querySelectorAll('select[data-param]').forEach((sel) => {
+    const v = params.get(sel.dataset.param);
+    if (v && [...sel.options].some((o) => o.value === v)) sel.value = v;
+  });
+  const text = form.querySelector('input[name="text"]');
+  const title = text.value;
+  form.addEventListener('submit', () => {
+    const lines = [title];
+    form.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach((el) => {
+      const v = el.tagName === 'SELECT' ? el.selectedOptions[0].text : el.value.trim();
+      const label = form.querySelector(`label[for="${el.id}"]`);
+      if (v && label) lines.push(`${label.textContent.replace(/\s*\(.*\)$/, '')}: ${v}`);
+    });
+    text.value = lines.join('\n');
+  });
+});
