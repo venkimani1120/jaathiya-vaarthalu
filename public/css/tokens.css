@@ -1,0 +1,115 @@
+/* Jaathiya Vaarthalu: design tokens ("royal light" palette: soft lavender, cream and pale-gold tints, violet, gold, crimson)
+   Light theme only: there is no dark mode, by design. Text stays dark for readability.
+   The site is English by default (Inter + Playfair Display) with a Telugu option (<html lang="te">, Noto Telugu).
+   Self-host WOFF2 files in /public/fonts; avoid Google Fonts at runtime.
+   Every text/background pair below meets WCAG AA (4.5:1). --gold is a fill only: use --gold-ink for gold text. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-var.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-var.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans Telugu";
+  src: url("/fonts/NotoSansTelugu-var.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Serif Telugu";
+  src: url("/fonts/NotoSerifTelugu-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  /* color */
+  --paper: #FFFDF8;     /* warm white page background */
+  --band: #F6F1E7;      /* parchment: alternate section bands, footer */
+  --surface: #FFFFFF;   /* cards, forms */
+  --ink: #2A2340;       /* text */
+  --muted: #5D5670;
+  --brand: #5B3FC4;     /* royal violet: primary buttons, active states */
+  --link: #4B32B0;      /* links, section labels */
+  --lavender: #F1ECFB;  /* light royal tint: top strip, hero, newsletter */
+  --lavender-2: #E7DEFA;/* gradient partner / borders on lavender */
+  --cream: #FBF3DC;     /* light gold tint: gradient partner, promo */
+  --gold: #E2C15A;      /* gold fill: main call-to-action, section bars, underlines, focus */
+  --gold-ink: #7D600F;  /* gold for text */
+  --crimson: #B42340;   /* breaking news only */
+  --crimson-tint: #FDECEE;
+  --green: #0E6B3A;     /* emerald: "published" / success states */
+  --line: #E9E1D2;      /* warm hairlines */
+
+  /* type */
+  /* English first; Telugu glyphs inside English pages (e.g. Telugu article titles) fall back to Noto */
+  --font-display: "Playfair Display", "Noto Serif Telugu", "Noto Sans Telugu", Georgia, serif; /* h1/h2, story titles */
+  --font-head: "Inter", "Noto Sans Telugu", system-ui, sans-serif;                             /* h3, UI headings */
+  --font-body: "Inter", "Noto Sans Telugu", system-ui, sans-serif;
+  --lh-body: 1.65;
+  --lh-head: 1.3;
+
+  /* scale: 1.2 ratio on an 18px base */
+  --t-sm: 0.83rem;
+  --t-base: 1rem;
+  --t-md: 1.2rem;
+  --t-lg: 1.44rem;
+  --t-xl: 1.73rem;
+  --t-2xl: 2.07rem;
+
+  --space: 1rem;
+  --radius: 10px;
+  --radius-lg: 18px;
+  --pill: 999px;
+  --wrap: 1200px;
+  --shadow: 0 1px 2px rgb(91 63 196 / .05), 0 6px 20px rgb(91 63 196 / .07);
+  --shadow-lift: 0 14px 34px rgb(91 63 196 / .14);
+  --measure: 60ch;
+}
+
+/* Telugu UI: Telugu fonts first and more leading so stacked conjuncts do not collide */
+:root[lang="te"] {
+  --font-display: "Noto Serif Telugu", "Noto Sans Telugu", "Playfair Display", serif;
+  --font-head: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
+  --font-body: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
+  --lh-body: 1.8;
+  --lh-head: 1.5;
+}
+
+html { font-size: 18px; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 { font-family: var(--font-head); font-weight: 700; line-height: var(--lh-head); margin: 0 0 0.5em; }
+h1, h2 { font-family: var(--font-display); }
+h1 { font-size: var(--t-2xl); }
+h2 { font-size: var(--t-xl); }
+h3 { font-size: var(--t-lg); }
+
+/* No tracking, no forced caps, no justify (required for Telugu; kept for English too) */
+* { letter-spacing: 0; text-transform: none; }
+p { max-width: var(--measure); text-align: left; }
+
+a { color: var(--link); }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+::selection { background: var(--cream); color: var(--ink); }
+
+.article-body { font-size: var(--t-md); line-height: 1.9; }
+.article-body img { max-width: 100%; height: auto; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

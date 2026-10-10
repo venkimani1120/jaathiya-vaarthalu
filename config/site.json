@@ -1,0 +1,96 @@
+{
+  "name_te": "జాతియ వార్తలు",
+  "name_en": "Jaathiya Vaartalu",
+  "tagline_te": "తెలుగు దినపత్రిక",
+  "tagline_en": "Telugu Daily Newspaper",
+  "editor_publisher_te": "మామిడి రాజేష్",
+  "editor_publisher_en": "Mamidi Rajesh",
+  "rni_number": "APTEL/25/A5264",
+  "established": 2025,
+  "publishing_centre": "Narasaraopet, Palnadu District, Andhra Pradesh",
+  "phone": "9989716940",
+  "address_te": "డోర్.నెం. 6-10-46, అరండల్ పేట, 10/6వ లైన్, గుంటూరు - 522 002",
+  "address_en": "Door No. 6-10-46, Arundelpet, 10/6th Line, Guntur - 522 002",
+  "advertise": {
+    "sizes": [
+      {
+        "key": "full",
+        "name_en": "Full page",
+        "name_te": "పూర్తి పేజీ",
+        "desc_en": "The whole page for your advert.",
+        "desc_te": "ఒక పేజీ మొత్తం మీ ప్రకటనకే.",
+        "w": 100,
+        "h": 100,
+        "price": null
+      },
+      {
+        "key": "half",
+        "name_en": "Half page",
+        "name_te": "అర పేజీ",
+        "desc_en": "The bottom half of a page, landscape.",
+        "desc_te": "పేజీ కింది సగం, అడ్డంగా.",
+        "w": 100,
+        "h": 50,
+        "price": null
+      },
+      {
+        "key": "quarter",
+        "name_en": "Quarter page",
+        "name_te": "పావు పేజీ",
+        "desc_en": "A quarter of a page.",
+        "desc_te": "పేజీలో నాలుగో వంతు.",
+        "w": 50,
+        "h": 50,
+        "price": null
+      },
+      {
+        "key": "classified",
+        "name_en": "Classified",
+        "name_te": "క్లాసిఫైడ్",
+        "desc_en": "Small ads: jobs, rentals, greetings.",
+        "desc_te": "ఉద్యోగాలు, అద్దెలు, శుభాకాంక్షలు వంటి చిన్న ప్రకటనలు.",
+        "w": 30,
+        "h": 18,
+        "price": null
+      },
+      {
+        "key": "web",
+        "name_en": "Website banner",
+        "name_te": "వెబ్‌సైట్ బ్యానర్",
+        "desc_en": "An online banner on our news pages.",
+        "desc_te": "మా వెబ్‌సైట్‌లోని వార్తా పేజీలలో ఆన్‌లైన్ ప్రకటన.",
+        "w": 100,
+        "h": 14,
+        "price": null
+      }
+    ]
+  },
+  "subscription": {
+    "plans": [
+      {
+        "key": "month",
+        "name_en": "Monthly",
+        "name_te": "నెలవారీ",
+        "desc_en": "The paper every day for one month.",
+        "desc_te": "ఒక నెల పాటు ప్రతి రోజు పత్రిక.",
+        "price": null
+      },
+      {
+        "key": "half-year",
+        "name_en": "6 months",
+        "name_te": "6 నెలలు",
+        "desc_en": "The paper every day for six months.",
+        "desc_te": "ఆరు నెలల పాటు ప్రతి రోజు పత్రిక.",
+        "price": null
+      },
+      {
+        "key": "year",
+        "name_en": "Yearly",
+        "name_te": "సంవత్సరం",
+        "desc_en": "The paper every day for a whole year.",
+        "desc_te": "ఏడాది పొడవునా ప్రతి రోజు పత్రిక.",
+        "price": null
+      }
+    ]
+  }
+}
