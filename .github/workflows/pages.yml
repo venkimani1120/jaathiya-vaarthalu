@@ -5,7 +5,9 @@ name: Build and publish
 
 on:
   push:
-    branches: [main]
+    # static-setup publishes too, for an online preview before merging. Remove it once main is live.
+    # The branch must also be allowed in Settings > Environments > github-pages > Deployment branches.
+    branches: [main, static-setup]
   pull_request:
   schedule:
     - cron: '7 * * * *'
@@ -43,7 +45,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/static-setup')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
