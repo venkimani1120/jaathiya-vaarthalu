@@ -11,8 +11,36 @@ function toDate(s) {
   return isNaN(d) ? null : d;
 }
 const isUrl = (p) => /^https?:\/\//.test(p);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const istDay = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // "YYYY-MM-DD"
 
-function load(dir, now = new Date()) {
+// ---- News from the desk app (src/remote.js) ----
+// Desk sections → website sections (categories.json). A section missing from categories.json leaves the story without one.
+const DESK_SECTION = { state: 'state', district: 'district', constituency: 'district', sports: 'sports', business: 'business' };
+const isVideo = (u) => /\/video\/upload\/|\.(mp4|webm|mov)(\?|$)/i.test(u);
+// Cloudinary resizes and converts on the fly: a smaller, WebP/AVIF copy for slow phones
+const cld = (u, w) => u.replace(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)/, `$1c_limit,w_${w},f_auto,q_auto/`);
+
+// Reporters don't have write access to this repo, so their text is escaped, never inserted as HTML
+function remoteArticle(n, cats) {
+  const media = (n.images || []).filter((u) => typeof u === 'string' && /^https:\/\//.test(u));
+  const photo = media.find((u) => !isVideo(u)) || '';
+  const paras = String(n.body || '').split(/\n\s*\n|\r?\n/).map((s) => esc(s.trim())).filter(Boolean);
+  if (n.dateline && paras.length) paras[0] = `<b>${esc(String(n.dateline).replace(/[:\s]+$/, ''))}:</b> ${paras[0]}`;
+  const extra = media.filter((u) => u !== photo).map((u) => (isVideo(u)
+    ? `<video controls preload="none" width="640" height="360" src="${esc(u)}"></video>`
+    : `<img src="${esc(cld(u, 1280))}" alt="" loading="lazy" width="640" height="480">`));
+  const date = new Date(n.approvedAt), updated = new Date(n.updatedAt);
+  return {
+    slug: String(n.id), title: n.title, summary: (n.highlights || []).join(' · '),
+    body: paras.map((p) => `<p>${p}</p>`).join('') + extra.map((m) => `<figure>${m}</figure>`).join(''),
+    image: photo ? cld(photo, 1280) : '', cat: cats.find((c) => c.slug === DESK_SECTION[n.section]), author: n.author || '',
+    date, updated: isNaN(updated) || updated < date ? date : updated, breaking: false,
+  };
+}
+
+// remote: what fetchRemote() returned, or nothing when the desk app is not used
+function load(dir, now = new Date(), remote) {
   const errors = [];
   const read = (file, fallback) => {
     const p = path.join(dir, file);
@@ -67,6 +95,14 @@ function load(dir, now = new Date()) {
       date, updated: toDate(a.updated_at) || date, breaking: !!a.breaking,
     });
   }
+  if (remote) {
+    const local = new Set(articles.map((a) => a.slug));
+    for (const n of remote.news) {
+      // The desk app already checks its news, so a bad item is skipped with a warning instead of stopping the build
+      if (!n || !/^[a-f0-9]{24}$/.test(n.id) || !n.title || !n.body || isNaN(new Date(n.approvedAt))) { console.warn(`Desk news skipped: ${JSON.stringify(n).slice(0, 120)}`); continue; }
+      if (!local.has(n.id) && new Date(n.approvedAt) <= now) articles.push(remoteArticle(n, cats));
+    }
+  }
   articles.sort((x, y) => y.date - x.date);
 
   editions.forEach((e, i) => {
@@ -76,6 +112,11 @@ function load(dir, now = new Date()) {
     else fileOk(`${w} "pdf"`, e.pdf);
     fileOk(`${w} "thumb"`, e.thumb);
   });
+  // Published e-papers from the desk app open in its reader at <app>/e/<link>
+  if (remote) for (const e of remote.epapers) {
+    const d = new Date(e.editionDate);
+    if (e.shareSlug && !isNaN(d)) editions.push({ date: istDay(d), link: `${remote.base}/e/${encodeURIComponent(e.shareSlug)}`, name: e.title || '' });
+  }
   editions.sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0));
 
   ads.forEach((a, i) => {

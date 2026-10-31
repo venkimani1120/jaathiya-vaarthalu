@@ -6,6 +6,17 @@ If a file has a mistake, the build stops and the live site stays as it was. To s
 
 Times are India time, written as `2026-10-10 09:30`. Dates are written as `2026-10-10`.
 
+## News from the news desk app
+
+Once the repo variable `NEWS_API_URL` is set (Settings → Secrets and variables → Actions → Variables, for example `https://jaathiya-vaartalu-studio-app.onrender.com`), every rebuild also shows:
+
+- **Approved news** from the desk app (reporter, desk and e-paper news, once an editor approves it), from the last 90 days. To change the number of days, add a variable `NEWS_DAYS`. A story appears at the first hourly rebuild after it is approved, at `/article/<its id>/`. Older stories leave the site, and their links stop working.
+- **Published e-papers**: each edition links to the desk app's reader (`/e/<link>`).
+
+Edit or delete these stories in the desk app, not here. Stories here and editions in `epaper.json` are still shown next to them. The desk sections map to these website sections: State → `state`, District and Constituency → `district`, Sports → `sports`, Business → `business`.
+
+If the desk app can't be reached (Render's free plan can be slow to wake up), the rebuild fails and the live site stays as it was until the next hourly run.
+
 ## Add a story: `articles/<web-address>.json`
 
 The file name becomes the story's web address, so `articles/guntur-rain-alert.json` is published at `/article/guntur-rain-alert/`. Use lowercase English letters, numbers and dashes. Don't change the name after the story is published, or old links will break.

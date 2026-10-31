@@ -1,5 +1,6 @@
 # Tests and builds the site on every push and pull request; publishes main to GitHub Pages.
-# The hourly run publishes stories whose published_at time has arrived and starts/ends ads on their dates.
+# The hourly run publishes stories whose published_at time has arrived, starts/ends ads on their dates and
+# picks up news approved in the desk app since the last run.
 # One-time setup: repo Settings > Pages > Build and deployment > Source: "GitHub Actions".
 name: Build and publish
 
@@ -35,9 +36,14 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
       # base_url is https://<user>.github.io/<repo>, or the custom domain once one is set in Settings > Pages
+      # NEWS_API_URL (Settings > Secrets and variables > Actions > Variables) is the news desk app on Render, e.g.
+      # https://jaathiya-vaartalu-studio-app.onrender.com. Its approved news and published e-papers are added on every
+      # run except pull requests; leave it unset to build from content/ only.
       - run: npm run build
         env:
           SITE_URL: ${{ steps.pages.outputs.base_url || 'https://example.github.io/preview' }}
+          NEWS_API_URL: ${{ github.event_name != 'pull_request' && vars.NEWS_API_URL || '' }}
+          NEWS_DAYS: ${{ vars.NEWS_DAYS }}
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:

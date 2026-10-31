@@ -3,20 +3,17 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { build } = require('./build');
+const { buildAll } = require('./build');
 
 const port = Number(process.env.PORT) || 3000;
 const OUT = path.join(__dirname, '..', 'dist');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.xml': 'application/xml',
   '.txt': 'text/plain', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.pdf': 'application/pdf' };
 
-try {
-  const r = build({ siteUrl: `http://localhost:${port}` });
-  console.log(`Built ${r.files} files (${r.articles} published stories)`);
-} catch (e) {
+buildAll({ siteUrl: `http://localhost:${port}` }).then((r) => console.log(`Built ${r.files} files (${r.articles} published stories)`), (e) => {
   console.error(e.message);
   process.exit(1); // npm run dev waits for the next file change
-}
+});
 
 http.createServer((req, res) => {
   let p;

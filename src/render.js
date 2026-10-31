@@ -203,14 +203,15 @@ ${related.length ? `<section class="wrap pad">${secHead(T.moreNews, catPath(a.ca
 <p class="search-msg">${T.searchMin}</p><noscript><p>${T.searchNoJs}</p></noscript><div class="grid"></div></div>` });
   };
 
+  // An edition is a PDF (epaper.json) or a link to the desk app's e-paper reader (src/remote.js)
   const epaper = (L) => {
     const { T, u, fmtDay } = ctx(L);
     const latest = editions.filter((x) => x.date === (lastEdition && lastEdition.date));
     const older = editions.slice(latest.length);
     return page(L, { title: T.epaper, path: '/epaper/',
       body: `<div class="pagehead"><div class="wrap"><h1>${T.epaper}</h1><p>${T.epIntro}</p></div></div>
-<div class="wrap pad">${latest.length ? `<div class="grid">${latest.map((x) => `<a class="card paper-card" href="${esc(asset(x.pdf))}" target="_blank" rel="noopener">${x.thumb ? `<img src="${esc(asset(x.thumb))}" alt="" loading="lazy" width="400">` : `<div class="ph" aria-hidden="true">${icon('paper', 'ic ic-xl')}</div>`}<div class="card-body"><span class="cat">${esc(fmtDay(x.date))}</span><h2>${esc(x.name || T.epaper)}</h2><span class="btn">${T.readPdf}</span></div></a>`).join('')}</div>` : `<p>${T.noEdition}</p>`}
-${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => `<li><a href="${esc(asset(x.pdf))}" target="_blank" rel="noopener">${esc(fmtDay(x.date))}${x.name ? ` · ${esc(x.name)}` : ''}</a></li>`).join('')}</ul>` : ''}
+<div class="wrap pad">${latest.length ? `<div class="grid">${latest.map((x) => `<a class="card paper-card" href="${esc(asset(x.pdf || x.link))}" target="_blank" rel="noopener">${x.thumb ? `<img src="${esc(asset(x.thumb))}" alt="" loading="lazy" width="400">` : `<div class="ph" aria-hidden="true">${icon('paper', 'ic ic-xl')}</div>`}<div class="card-body"><span class="cat">${esc(fmtDay(x.date))}</span><h2>${esc(x.name || T.epaper)}</h2><span class="btn">${x.pdf ? T.readPdf : T.readEpaper}</span></div></a>`).join('')}</div>` : `<p>${T.noEdition}</p>`}
+${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => `<li><a href="${esc(asset(x.pdf || x.link))}" target="_blank" rel="noopener">${esc(fmtDay(x.date))}${x.name ? ` · ${esc(x.name)}` : ''}</a></li>`).join('')}</ul>` : ''}
 </div>` });
   };
 

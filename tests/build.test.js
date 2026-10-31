@@ -82,5 +82,50 @@ json('articles/bad.json', { title: 'x', body: 'y', section: 'nope', published_at
 assert.throws(() => build({ contentDir: content, outDir: out, siteUrl: 'https://x.example', now }),
   (e) => /section "nope" is not in categories.json/.test(e.message) && /"published_at" must look like/.test(e.message));
 
+fs.rmSync(path.join(content, 'articles', 'bad.json'));
+
+// News desk app: approved news and published e-papers are added to the content/ ones
+const ID = 'a'.repeat(24), CLD = 'https://res.cloudinary.com/demo/image/upload/v1/jaathiya/news/';
+const remote = {
+  base: 'https://desk.example',
+  news: [
+    { id: ID, title: 'కొత్త రోడ్డు <b>', highlights: ['రూ.45 లక్షలు', 'ప్రారంభం'], body: 'మొదటి <script>x</script>\n\nరెండవ', dateline: 'గుంటూరు',
+      images: [CLD + 'a.jpg', 'https://res.cloudinary.com/demo/video/upload/v1/clip.mp4', CLD + 'b.jpg'], section: 'sports', author: 'రాజేష్',
+      approvedAt: '2026-10-10T05:00:00Z', updatedAt: '2026-10-10T05:30:00Z' },
+    { id: 'b'.repeat(24), title: 'Later', body: 'x', section: 'state', approvedAt: '2026-10-11T05:00:00Z', updatedAt: '2026-10-11T05:00:00Z' },
+    { id: 'not-an-id', title: 'Bad', body: 'x', approvedAt: '2026-10-10T05:00:00Z' },
+  ],
+  epapers: [{ title: 'Guntur', editionDate: '2026-10-10T00:00:00.000Z', shareSlug: 'gnt-1010' }],
+};
+const r2 = build({ contentDir: content, outDir: out, siteUrl: 'https://example.github.io/jv/', now, remote });
+assert.strictEqual(r2.articles, 24, 'remote news added; future and bad items skipped');
+const rart = read(`article/${ID}/index.html`);
+assert(rart.includes('కొత్త రోడ్డు &lt;b&gt;') && rart.includes('<p><b>గుంటూరు:</b> మొదటి &lt;script&gt;') && rart.includes('<p>రెండవ</p>'), 'desk text is escaped');
+assert(rart.includes('src="https://res.cloudinary.com/demo/image/upload/c_limit,w_1280,f_auto,q_auto/v1/jaathiya/news/a.jpg"') && rart.includes('<video controls') && rart.includes('b.jpg'));
+assert(rart.includes('రూ.45 లక్షలు · ప్రారంభం') && rart.includes('aria-current="page">Sports<'));
+const ep2 = read('epaper/index.html');
+assert(ep2.includes('href="https://desk.example/e/gnt-1010"') && ep2.includes('Guntur') && ep2.includes('Read the e-paper'));
+
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log('all build checks passed');
+
+// fetchRemote reads every page of news, then the e-papers
+const http = require('http');
+const { fetchRemote } = require('../src/remote');
+const srv = http.createServer((req, res) => {
+  const u = new URL(req.url, 'http://x');
+  const body = u.pathname === '/api/public/epapers' ? { items: [{ shareSlug: 's' }] }
+    : u.pathname === '/api/public/news' ? { items: [{ id: u.searchParams.get('page') + u.searchParams.get('days') }], more: u.searchParams.get('page') === '1' } : null;
+  res.writeHead(body ? 200 : 404, { 'content-type': 'application/json' }).end(JSON.stringify(body || {}));
+}).listen(0, async () => {
+  try {
+    const got = await fetchRemote(`http://127.0.0.1:${srv.address().port}/`, { days: 7 });
+    assert.deepStrictEqual(got.news.map((n) => n.id), ['17', '27']);
+    assert(got.epapers.length === 1 && got.base === `http://127.0.0.1:${srv.address().port}`);
+    console.log('all build checks passed');
+  } catch (e) {
+    console.error(e);
+    process.exitCode = 1;
+  } finally {
+    srv.close();
+  }
+});

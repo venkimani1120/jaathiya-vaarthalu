@@ -132,6 +132,8 @@ button:active,.btn:active{transform:none;filter:brightness(.95)}
 .article h1{margin:.3rem 0 .4rem}
 .standfirst{font-size:var(--t-md);color:var(--muted);margin:0 0 .4rem}
 .cover{border-radius:var(--radius-lg);margin:1rem 0;width:100%}
+.article-body figure{margin:1rem 0}
+.article-body figure img,.article-body figure video{width:100%;height:auto;border-radius:var(--radius)}
 .ad{min-height:90px;margin:1.5rem 0;text-align:center;color:var(--muted);font-size:var(--t-sm)}
 .ad img{margin:auto;border-radius:var(--radius)}
 
