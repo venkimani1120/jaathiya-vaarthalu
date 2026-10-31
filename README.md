@@ -1,20 +1,49 @@
 # Jaathiya Vaarthalu (జాతియ వార్తలు) website
 
-This is the static website for a Telugu daily newspaper, hosted free on GitHub Pages. It has news pages in English and Telugu, an e-paper archive, and advertising and print-subscription pages. The design follows newspaperclub.com: hero carousel, icon value rows, card grids, promo bands and a multi-column footer.
+This is the website for a Telugu daily newspaper. It has news pages in English and Telugu, an e-paper archive, and advertising and print-subscription pages. The design follows newspaperclub.com: hero carousel, icon value rows, card grids, promo bands and a multi-column footer.
 
-There is no server and no database. Stories, sections, e-paper editions and ads are JSON files in `content/`. A small Node script (`npm run build`) turns them into plain HTML pages in `dist/`, and GitHub Actions publishes those pages. The project has **no npm dependencies**.
+On this branch (`dyna-web-app-render`) the site is a **Node web app on Render** (`src/server.js`). It shows the news approved in the news desk app (`jaathiya-vaartalu-studio-app`) by reading the desk app's **MongoDB** directly, with photos from Cloudinary, plus the desk app's published e-papers. It reads the database again every 2 minutes, so an approved story is on the site within about 2 minutes. Sections, ads, paper details and any hand-written stories are still JSON files in `content/`. The only npm dependency is the `mongodb` driver. The static GitHub Pages build (`npm run build`) still works.
 
 **To add or change content, see [`content/README.md`](content/README.md).**
 
 ## Run locally
 ```bash
-npm run dev     # builds the site and serves it on http://localhost:3000, rebuilding on every change
-npm test        # builds a sample site into a temp folder and checks the pages
-npm run build   # writes the site to dist/ (set SITE_URL for the real address)
+npm install
+cp .env.example .env   # put the read-only MONGODB_URI in .env (without it only content/ is shown)
+npm run dev     # serves the site on http://localhost:3000 and restarts on every change
+npm test        # checks a sample static build and the web app (with a stand-in database)
+npm start       # what Render runs
+npm run build   # static build into dist/ (set SITE_URL for the real address)
 ```
 Needs Node 22 or newer.
 
-## Publish on GitHub Pages
+## Deploy on Render
+
+The steps below use the same MongoDB Atlas cluster as the desk app. The website only reads from it.
+
+1. **Make a read-only database user.** In MongoDB Atlas, open the desk app's project → **Database Access** → **Add New Database User**. Choose password login, name it `jv-web-reader`, generate a password, and under **Database User Privileges** pick **Specific Privileges** → `read` on the desk app's database (the name after `.mongodb.net/` in the desk app's `MONGODB_URI`, e.g. `jaathiya`). Save it.
+2. **Get the connection string.** In **Database** → **Connect** → **Drivers**, copy the `mongodb+srv://…` string, put in the new user and password, and add the database name before the `?`: `mongodb+srv://jv-web-reader:<password>@cluster0.xxxxx.mongodb.net/jaathiya?retryWrites=true&w=majority`.
+3. **Allow Render to connect.** In **Network Access**, Render must be allowed. If the desk app on Render already connects, its entry (often `0.0.0.0/0`) covers this site too. If not, add the outbound IP addresses Render shows for this service under **Connect → Outbound**.
+4. **Push this branch** to GitHub: `git push -u origin dyna-web-app-render`.
+5. **Create the service from the Blueprint.** In the Render dashboard, choose **New → Blueprint**, connect the `jaathiya-vaarthalu` repo and pick the `dyna-web-app-render` branch. Render reads `render.yaml` and asks for `MONGODB_URI`. Paste the string from step 2 and click **Apply**.
+   *Without the Blueprint:* **New → Web Service**, pick the repo and branch, Runtime **Node**, Build command `npm ci && npm test`, Start command `npm start`, Health check path `/healthz`, then add the environment variables listed in `render.yaml`.
+6. **Wait for the deploy.** The build runs the tests. The service is live once `/healthz` answers `ok`, which needs a successful read of MongoDB. If the connection string is wrong, the deploy fails and the log says `MongoDB read failed`. Open `https://jaathiya-vaarthalu-web.onrender.com/`; an approved story in the desk app shows up within 2 minutes.
+7. **Optional custom domain.** In the service's **Settings → Custom Domains**, add the domain and the DNS records Render shows. Then set the environment variable `SITE_URL` to `https://<the domain>` so canonical links, the sitemap and RSS use it.
+8. **Search Console.** Submit `sitemap.xml` and `news-sitemap.xml` in Google Search Console.
+
+Every push to `dyna-web-app-render` redeploys, including edits to `content/` (about 2 to 3 minutes). Render's free plan stops the service after 15 minutes without visitors, and the next visitor waits about a minute while it starts. For a public news site, use a paid instance type, which stays awake.
+
+| Variable | Meaning |
+|---|---|
+| `MONGODB_URI` | The desk app's database, with a read-only user. Required on Render. |
+| `DESK_APP_URL` | The desk app's address. E-papers open in its reader at `/e/<link>`. |
+| `NEWS_DAYS` | Days of approved news in the lists, search and sitemaps (default 90). Older stories still open by their link. |
+| `REFRESH_SECONDS` | How often the database is read again (default 120, at least 30). |
+| `SITE_URL` | The public address. Default: Render's `onrender.com` address. |
+
+## Publish on GitHub Pages (static version)
+The static site built from `content/` (and, with `NEWS_API_URL`, the desk app's public API) can still be published on Pages:
+
 1. **Make Pages available.** Pages needs either a **public** repo or a paid GitHub plan (Pro, Team or Enterprise). E-paper PDFs on GitHub Releases are only readable by the public when the repo is public.
 2. **Turn on Pages.** In the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
 3. **Publish.** Push to `main`. The *Build and publish* workflow tests the site, builds it and publishes it to `https://<user>.github.io/jaathiya-vaarthalu/`. Its first run shows the link.

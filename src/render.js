@@ -31,7 +31,10 @@ const values = (l) => `<ul class="values">${l.map(([i, t, d]) => `<li>${icon(i, 
 // Site path ("/advertise/") → output file ("advertise/index.html")
 const fileOf = (p) => decodeURIComponent(p).replace(/^\//, '') + (p.endsWith('/') ? 'index.html' : '');
 
-function renderSite({ site, cats, articles, editions, ads, siteUrl, now = new Date() }) {
+// Every output file → a function that renders it. The server (src/server.js) calls only the page asked for;
+// renderSite() below renders them all for the static build. article() renders a story that is not in the list
+// (an older desk-app story the server looked up by its id).
+function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Date() }) {
   // SITE_URL may include a sub-path (GitHub Pages project sites live at https://<user>.github.io/<repo>)
   const BASE = new URL(siteUrl.replace(/\/?$/, '/'));
   const BP = BASE.pathname.replace(/\/$/, ''); // '' or '/repo'
@@ -263,36 +266,45 @@ ${enquiryForm(c, 'subscription', plans, 'plan', T.subEnqH)}` });
     return page('en', { title: T.notFoundT, noindex: true, path: '/', body: `<div class="wrap pad"><h1>${T.notFoundT}</h1><p>${T.notFoundP} <a href="${u('/')}">${T.goHome}</a>.</p></div>` });
   };
 
-  // ---- build every page ----
+  // ---- every page, rendered when asked for ----
   const out = new Map();
-  const put = (L, p, html) => out.set(fileOf((L === 'te' ? '/te' : '') + p), html);
+  const put = (L, p, fn) => out.set(fileOf((L === 'te' ? '/te' : '') + p), fn);
   for (const L of LANGS) {
-    put(L, '/', home(L));
-    for (const a of articles) put(L, artPath(a), article(L, a));
-    for (const c of cats) for (const [p, html] of category(L, c)) put(L, p, html);
-    put(L, '/search/', searchPage(L));
-    put(L, '/epaper/', epaper(L));
-    put(L, '/advertise/', advertise(L));
-    put(L, '/subscribe/', subscribe(L));
+    put(L, '/', () => home(L));
+    for (const a of articles) put(L, artPath(a), () => article(L, a));
+    for (const c of cats) {
+      // A section's pages are rendered together; the first request renders and keeps them
+      let pages;
+      const all = () => (pages = pages || new Map(category(L, c)));
+      const n = Math.max(1, Math.ceil(latestIn(c.slug).length / PAGE));
+      for (let i = 1; i <= n; i++) { const at = catPath(c) + (i > 1 ? `page/${i}/` : ''); put(L, at, () => all().get(at)); }
+    }
+    put(L, '/search/', () => searchPage(L));
+    put(L, '/epaper/', () => epaper(L));
+    put(L, '/advertise/', () => advertise(L));
+    put(L, '/subscribe/', () => subscribe(L));
   }
-  out.set('404.html', notFound());
+  out.set('404.html', () => notFound());
 
   // Search index: newest first, the text to match is lower-cased once here
-  out.set('search-index.json', JSON.stringify(articles.slice(0, 2000).map((a) => ({
+  out.set('search-index.json', () => JSON.stringify(articles.slice(0, 2000).map((a) => ({
     u: encodeURIComponent(a.slug) + '/', t: a.title, c: a.cat ? a.cat.slug : '', d: a.date.toISOString(), i: a.image ? asset(a.image) : '',
     x: `${a.title} ${a.summary} ${plain(a.body, 5000)}`.toLowerCase(),
   }))));
 
   // ---- SEO feeds (language independent) ----
   const xml = (body) => '<?xml version="1.0" encoding="UTF-8"?>\n' + body;
-  out.set('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${absAsset('sitemap.xml')}\nSitemap: ${absAsset('news-sitemap.xml')}\n`);
+  out.set('robots.txt', () => `User-agent: *\nAllow: /\nSitemap: ${absAsset('sitemap.xml')}\nSitemap: ${absAsset('news-sitemap.xml')}\n`);
   const pages = ['/', '/epaper/', '/advertise/', '/subscribe/', ...cats.map(catPath)];
   const urls = LANGS.flatMap((L) => [...pages.map((p) => ({ p: absUrl(L, p) })), ...articles.slice(0, 5000).map((a) => ({ p: absUrl(L, artPath(a)), m: a.updated }))]);
-  out.set('sitemap.xml', xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((x) => `<url><loc>${esc(x.p)}</loc>${x.m ? `<lastmod>${x.m.toISOString()}</lastmod>` : ''}</url>`).join('')}</urlset>`));
+  out.set('sitemap.xml', () => xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((x) => `<url><loc>${esc(x.p)}</loc>${x.m ? `<lastmod>${x.m.toISOString()}</lastmod>` : ''}</url>`).join('')}</urlset>`));
   const recent = articles.filter((a) => now - a.date <= 2 * 864e5).slice(0, 1000);
-  out.set('news-sitemap.xml', xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${recent.map((a) => `<url><loc>${esc(absUrl('en', artPath(a)))}</loc><news:news><news:publication><news:name>${esc(site.name_en)}</news:name><news:language>te</news:language></news:publication><news:publication_date>${a.date.toISOString()}</news:publication_date><news:title>${esc(a.title)}</news:title></news:news></url>`).join('')}</urlset>`));
-  out.set('rss.xml', xml(`<rss version="2.0"><channel><title>${esc(site.name_te)}</title><link>${esc(absUrl('en', '/'))}</link><description>${esc(site.tagline_te)}</description><language>te</language>${articles.slice(0, 30).map((a) => `<item><title>${esc(a.title)}</title><link>${esc(absUrl('en', artPath(a)))}</link><guid>${esc(absUrl('en', artPath(a)))}</guid><pubDate>${a.date.toUTCString()}</pubDate><description>${esc(a.summary)}</description></item>`).join('')}</channel></rss>`));
-  return out;
+  out.set('news-sitemap.xml', () => xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${recent.map((a) => `<url><loc>${esc(absUrl('en', artPath(a)))}</loc><news:news><news:publication><news:name>${esc(site.name_en)}</news:name><news:language>te</news:language></news:publication><news:publication_date>${a.date.toISOString()}</news:publication_date><news:title>${esc(a.title)}</news:title></news:news></url>`).join('')}</urlset>`));
+  out.set('rss.xml', () => xml(`<rss version="2.0"><channel><title>${esc(site.name_te)}</title><link>${esc(absUrl('en', '/'))}</link><description>${esc(site.tagline_te)}</description><language>te</language>${articles.slice(0, 30).map((a) => `<item><title>${esc(a.title)}</title><link>${esc(absUrl('en', artPath(a)))}</link><guid>${esc(absUrl('en', artPath(a)))}</guid><pubDate>${a.date.toUTCString()}</pubDate><description>${esc(a.summary)}</description></item>`).join('')}</channel></rss>`));
+  return { routes: out, article: (L, a) => article(L, a), artFile: (L, a) => fileOf((L === 'te' ? '/te' : '') + artPath(a)) };
 }
 
-module.exports = { renderSite };
+// Static build: every page as text
+const renderSite = (data) => new Map([...createSite(data).routes].map(([f, fn]) => [f, fn()]));
+
+module.exports = { createSite, renderSite };

@@ -1,0 +1,28 @@
+# Render Blueprint: the public website as one Node web service (src/server.js).
+# Render dashboard > New > Blueprint > pick this repo and the dyna-web-app-render branch. It asks for MONGODB_URI.
+services:
+  - type: web
+    name: jaathiya-vaarthalu-web
+    runtime: node
+    plan: free              # free instances sleep after 15 idle minutes; a paid plan keeps the site awake
+    region: singapore       # closest Render region to India
+    branch: dyna-web-app-render
+    buildCommand: npm ci && npm test
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # The desk app's MongoDB Atlas database (same cluster). Use a read-only user, e.g.
+      # mongodb+srv://jv-web-reader:<password>@cluster0.xxxxx.mongodb.net/jaathiya
+      - key: MONGODB_URI
+        sync: false
+      # The desk app; published e-papers open in its reader at /e/<link>
+      - key: DESK_APP_URL
+        value: https://jaathiya-vaartalu-studio-app.onrender.com
+      - key: NEWS_DAYS
+        value: "90"
+      - key: REFRESH_SECONDS
+        value: "120"
+      # Optional: set SITE_URL once a custom domain is added (default: the onrender.com address)

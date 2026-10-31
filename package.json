@@ -2,13 +2,17 @@
   "name": "jaathiya-vaarthalu",
   "version": "0.2.0",
   "private": true,
-  "description": "Static site for the Jaathiya Vaarthalu Telugu daily, built from JSON content for GitHub Pages",
+  "description": "Jaathiya Vaarthalu Telugu daily: a Node web app on Render with news from MongoDB (static GitHub Pages build still available)",
   "scripts": {
-    "build": "node src/build.js",
-    "dev": "node --watch-path=src --watch-path=content --watch-path=public src/dev.js",
-    "test": "node tests/build.test.js"
+    "start": "node src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=content --watch-path=public src/server.js",
+    "build": "node --env-file-if-exists=.env src/build.js",
+    "test": "node tests/build.test.js && node tests/server.test.js"
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0"
   }
 }

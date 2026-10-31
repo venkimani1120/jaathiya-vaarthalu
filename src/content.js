@@ -115,7 +115,7 @@ function load(dir, now = new Date(), remote) {
   // Published e-papers from the desk app open in its reader at <app>/e/<link>
   if (remote) for (const e of remote.epapers) {
     const d = new Date(e.editionDate);
-    if (e.shareSlug && !isNaN(d)) editions.push({ date: istDay(d), link: `${remote.base}/e/${encodeURIComponent(e.shareSlug)}`, name: e.title || '' });
+    if (e.shareSlug && !isNaN(d)) editions.push({ date: istDay(d), link: `${String(remote.base).replace(/\/+$/, '')}/e/${encodeURIComponent(e.shareSlug)}`, name: e.title || '' });
   }
   editions.sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0));
 
@@ -133,4 +133,4 @@ function load(dir, now = new Date(), remote) {
   return { site, cats, articles, editions, ads };
 }
 
-module.exports = { load, toDate, isUrl };
+module.exports = { load, toDate, isUrl, remoteArticle };

@@ -4,14 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Jaathiya Vaarthalu (జాతియ వార్తలు): static website for a Telugu daily newspaper, published on GitHub Pages. Public pages are in English by default with a Telugu version under `/te/`. There is an e-paper archive and there are advertising and print-subscription pages. The public design follows newspaperclub.com. There is **no server, no database and no npm dependencies**: content is JSON in `content/`, and `src/build.js` (plain Node 22+) renders it to HTML in `dist/`. Keep it dependency-free, and keep browser JS as plain files under `public/js/` (no frontend bundler).
+Jaathiya Vaarthalu (జాతియ వార్తలు): website for a Telugu daily newspaper. Public pages are in English by default with a Telugu version under `/te/`. There is an e-paper archive and there are advertising and print-subscription pages. The public design follows newspaperclub.com.
+
+On the `dyna-web-app-render` branch it is a **Node web app on Render** (`src/server.js`, `render.yaml`) that reads approved news and published e-papers from the news desk app's **MongoDB** (separate repo `jaathiya-vaartalu-studio-app`; photos on Cloudinary) and renders the same pages as the static build. Other content is still JSON in `content/`. The only npm dependency is `mongodb`; keep it that way (no framework, no frontend bundler, browser JS stays plain files under `public/js/`). The static build (`src/build.js` → `dist/`, GitHub Pages) still works and shares all templates.
 
 ## Commands
 
 ```bash
-npm run dev     # build + serve dist/ on http://localhost:3000 (Pages-like: dir → index.html, /x → /x/, 404.html), rebuilds on changes
-npm run build   # write dist/; SITE_URL sets the absolute address and base path (default http://localhost:3000)
-npm test        # tests/build.test.js: builds fixture content into a temp dir with SITE_URL=https://example.github.io/jv/ and asserts on the files
+npm start       # src/server.js (what Render runs); env in render.yaml / .env.example
+npm run dev     # the same server with .env loaded, restarting on changes to src/, content/, public/
+npm run build   # static build into dist/; SITE_URL sets the absolute address and base path (default http://localhost:3000)
+npm test        # tests/build.test.js (static build of fixture content, SITE_URL=https://example.github.io/jv/) and tests/server.test.js (server with a stand-in db)
 ```
 
 - There is no linter and no test framework. `npm test` is a single plain `node:assert` script.
@@ -24,7 +27,9 @@ npm test        # tests/build.test.js: builds fixture content into a temp dir wi
 - **`src/render.js`**: `renderSite(data)` returns a `Map` of output file → contents for every page in both languages, plus `404.html`, `search-index.json`, `sitemap.xml`, `news-sitemap.xml`, `rss.xml` and `robots.txt`. Pages are template strings with the local `esc()` helper and the `page(L, o)` layout (header, nav, language toggle, breaking ticker, footer, canonical + `hreflang` alternates, Open Graph, JSON-LD). `o.path` is the site path without the language prefix, always with a trailing slash (`/advertise/`). **All links must go through `url(L, p)` (pages) or `asset(p)` (CSS, JS, images, feeds)**, because `SITE_URL` may contain a sub-path (`https://user.github.io/repo`); never write a bare `href="/..."`. The test checks every `href`/`src`/`action` on several pages for the base path. Ads are chosen at build time by date.
 - **`src/remote.js`**: when `NEWS_API_URL` is set (a repo variable in Actions, skipped on PRs), `buildAll()` in `build.js` fetches the news desk app (separate repo `jaathiya-vaartalu-studio-app`: Express on Render, MongoDB, Cloudinary): `GET /api/public/news?days=&page=` (approved + published news, 200 per page, `NEWS_DAYS` default 90) and `GET /api/public/epapers`. `load(dir, now, remote)` maps each story with `remoteArticle()` (slug = Mongo id, plain-text body **escaped** into `<p>`s because reporters are not repo writers, Cloudinary URLs get a `c_limit,w_1280,f_auto,q_auto` transform, desk sections via `DESK_SECTION`) and each edition to `{ date, link: <app>/e/<shareSlug>, name }` (`link` instead of `pdf`). A failed fetch (3 tries, 2-minute timeout) fails the build so the live site stays as it was.
 - **`src/i18n.js`**: all public UI text in English (`en`) and Telugu (`te`), keyed in `STR`; any new UI text must be added in both. `pick(obj, field, lang)` chooses `field_en`/`field_te` (falling back to Telugu) for `site.json` entries. Section names use `secName()` in `render.js` instead, because English is their main name and each language falls back to the other. Article text is not translated.
-- **`src/build.js`**: loads content, renders, wipes `dist/`, copies `public/` (minus `.txt`) and `content/images/`, writes the files. `src/dev.js` is the local preview server (`node:http`).
+- **`src/build.js`**: loads content, renders, wipes `dist/`, copies `public/` (minus `.txt`) and `content/images/`, writes the files.
+- **`src/server.js`**: `createServer({ siteUrl, db, … })` returns `{ server, refresh }`. `refresh()` (on start, then every `REFRESH_SECONDS`) calls `db.fetchFromMongo()`, `load()` and `createSite()`, swaps in the new site and clears the page cache; if MongoDB fails it keeps the last news. `createSite()` in `render.js` returns `routes` (output file → function that renders it, so pages are rendered on first request and cached, max 2000) plus `article(L, a)` for stories older than `NEWS_DAYS`, which the server looks up by id (`findNews`). `renderSite()` = every route rendered, for the static build. It serves Pages-like paths (`/x` → `/x/`, `404.html`), `public/` and `content/images/` at `/images/`, gzips text, and `/healthz` is 503 until the first MongoDB read succeeds (so a bad deploy doesn't go live). A content error stops the start.
+- **`src/mongo.js`**: `connect(uri)` → `{ fetchFromMongo({ days, base }), findNews(id), close }`. Reads only the collections `news` (status `approved`/`published`; date = `reviewedAt || createdAt`), `epapers` (`published`) and `users` (author names). `toItem()` gives the same shape as the desk app's `GET /api/public/news`, so `remoteArticle()` in `content.js` maps both.
 - **Browser JS**: `public/js/site.js` runs the hero carousel (a scroll-snap strip without JS), preselects the size/plan from `?size=`/`?plan=` and, on submit of a `.wa-form`, writes the labelled field values into the hidden `text` input so the GET to `https://wa.me/<number>` opens WhatsApp with the enquiry typed. The visible fields have no `name`, so only `text` is sent. `public/js/search.js` fetches `search-index.json` and filters on the lower-cased `x` field (title + summary + body text). It gets its strings and links from `data-` attributes on `#search-results` and rebuilds the same card markup as `card()` in `render.js`; keep the two in step.
 - **Article body** is HTML written by people with push access to the repo, and it is inserted as-is (no sanitiser). Treat repo write access as publishing rights.
 
@@ -38,8 +43,8 @@ npm test        # tests/build.test.js: builds fixture content into a temp dir wi
 
 ## Known limitations
 
-- No admin panel: staff edit JSON on GitHub. No stored enquiries and no newsletter.
-- Scheduling and ad dates have up to 1 hour of lag (hourly cron). Search and the full enquiry message need JS.
-- Desk-app stories older than `NEWS_DAYS` drop off the site (their links 404). Desk e-papers have no thumbnail.
+- No admin panel on this site: news is managed in the desk app, other content is JSON on GitHub. No stored enquiries and no newsletter.
+- The web app: news, scheduling and ad dates lag up to `REFRESH_SECONDS`; Render's free plan sleeps after 15 idle minutes. The static build: up to 1 hour (hourly cron). Search and the full enquiry message need JS.
+- Desk-app stories older than `NEWS_DAYS` leave the lists (the web app still opens them by id; the static build 404s). Desk e-papers have no thumbnail.
 - `404.html` is English only. Only the `inline` ad slot is rendered.
 - `docs/Future_Enhancement.md` describes the earlier server version and is out of date.
