@@ -1,0 +1,17 @@
+{
+  "name": "jaathiya-vaarthalu-api",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Jaathiya Vaarthalu backend: content/ and the desk app's MongoDB as a JSON API for the frontend",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=content src/server.js",
+    "test": "node tests/content.test.js && node tests/server.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0"
+  }
+}

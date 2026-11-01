@@ -1,10 +1,14 @@
-# Render Blueprint: the public website as one Node web service (src/server.js).
-# Render dashboard > New > Blueprint > pick this repo and the dyna-web-app-render branch. It asks for MONGODB_URI.
+# Render Blueprint: two Node web services from this repo.
+#   jaathiya-vaarthalu-api  backend/: content/ + the desk app's MongoDB as a JSON API (backend/src/server.js)
+#   jaathiya-vaarthalu-web  frontend/: the public website, rendered from that API (frontend/src/server.js)
+# Render dashboard > New > Blueprint > pick this repo and branch. It asks for MONGODB_URI.
+# rootDir also limits auto-deploys: a change under backend/ (including content/) redeploys only the API.
 services:
   - type: web
-    name: jaathiya-vaarthalu-web
+    name: jaathiya-vaarthalu-api
     runtime: node
-    plan: free              # free instances sleep after 15 idle minutes; a paid plan keeps the site awake
+    rootDir: backend
+    plan: free              # free instances sleep after 15 idle minutes; the website's refreshes keep it awake while the website is awake
     region: singapore       # closest Render region to India
     branch: dyna-web-app-render
     buildCommand: npm ci && npm test
@@ -23,6 +27,27 @@ services:
         value: https://jaathiya-vaartalu-studio-app.onrender.com
       - key: NEWS_DAYS
         value: "90"
+      - key: REFRESH_SECONDS
+        value: "120"
+
+  - type: web
+    name: jaathiya-vaarthalu-web
+    runtime: node
+    rootDir: frontend
+    plan: free
+    region: singapore
+    branch: dyna-web-app-render
+    buildCommand: npm ci && npm test
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # The API service's public address (its URL on the Render dashboard). Free services can't receive
+      # private-network traffic; on a paid plan the internal address (http://jaathiya-vaarthalu-api:10000) is faster.
+      - key: API_URL
+        value: https://jaathiya-vaarthalu-api.onrender.com
       - key: REFRESH_SECONDS
         value: "120"
       # Optional: set SITE_URL once a custom domain is added (default: the onrender.com address)

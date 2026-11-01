@@ -1,5 +1,5 @@
-// Reads and checks everything under content/. A mistake in any file stops the build with a list of
-// problems, so a bad edit on GitHub fails the Actions run instead of publishing a broken site.
+// Reads and checks everything under content/. A mistake in any file stops the start (or the build) with a list of
+// problems, so a bad edit on GitHub fails the deploy instead of publishing a broken site.
 const fs = require('fs');
 const path = require('path');
 
@@ -87,7 +87,7 @@ function load(dir, now = new Date(), remote) {
     if (a.section && !slugs.has(a.section)) errors.push(`${w}: section "${a.section}" is not in categories.json`);
     if (/[\s/?#%]/.test(slug)) errors.push(`${w}: the file name is the web address, so it can't contain spaces, / ? # or %`);
     fileOk(`${w} "image"`, a.image);
-    // Drafts and stories timed for later stay off the site. The hourly rebuild publishes them when due.
+    // Drafts and stories timed for later stay off the site. The next refresh publishes them when due.
     if (a.draft || !date || date > now) continue;
     articles.push({
       slug, title: a.title, summary: a.summary || '', body: a.body, image: a.image || '',
@@ -98,7 +98,7 @@ function load(dir, now = new Date(), remote) {
   if (remote) {
     const local = new Set(articles.map((a) => a.slug));
     for (const n of remote.news) {
-      // The desk app already checks its news, so a bad item is skipped with a warning instead of stopping the build
+      // The desk app already checks its news, so a bad item is skipped with a warning instead of stopping the start
       if (!n || !/^[a-f0-9]{24}$/.test(n.id) || !n.title || !n.body || isNaN(new Date(n.approvedAt))) { console.warn(`Desk news skipped: ${JSON.stringify(n).slice(0, 120)}`); continue; }
       if (!local.has(n.id) && new Date(n.approvedAt) <= now) articles.push(remoteArticle(n, cats));
     }

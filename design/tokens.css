@@ -1,7 +1,7 @@
 /* Jaathiya Vaarthalu: design tokens ("royal light" palette: soft lavender, cream and pale-gold tints, violet, gold, crimson)
    Light theme only: there is no dark mode, by design. Text stays dark for readability.
    The site is English by default (Inter + Playfair Display) with a Telugu option (<html lang="te">, Noto Telugu).
-   Self-host WOFF2 files in /public/fonts; avoid Google Fonts at runtime.
+   Self-host WOFF2 files in frontend/public/fonts; avoid Google Fonts at runtime.
    Every text/background pair below meets WCAG AA (4.5:1). --gold is a fill only: use --gold-ink for gold text. */
 
 @font-face {

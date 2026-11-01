@@ -1,18 +1,15 @@
 {
   "name": "jaathiya-vaarthalu",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Jaathiya Vaarthalu Telugu daily: a Node web app on Render with news from MongoDB (static GitHub Pages build still available)",
+  "description": "Jaathiya Vaarthalu Telugu daily: backend (JSON API over content/ and the desk app's MongoDB) and frontend (the public pages), two Render services",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=content --watch-path=public src/server.js",
-    "build": "node --env-file-if-exists=.env src/build.js",
-    "test": "node tests/build.test.js && node tests/server.test.js"
+    "install:all": "npm --prefix backend ci && npm --prefix frontend ci",
+    "dev": "node scripts/dev.js",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix backend test && npm --prefix frontend test"
   },
   "engines": {
     "node": ">=22"
-  },
-  "dependencies": {
-    "mongodb": "^6.21.0"
   }
 }

@@ -1,8 +1,8 @@
 // Approved news and published e-papers from the news desk app (jaathiya-vaartalu-studio-app on Render, which keeps
-// them in MongoDB with photos on Cloudinary). build.js calls fetchRemote() when NEWS_API_URL is set, and content.js
+// them in MongoDB with photos on Cloudinary). server.js calls fetchRemote() when NEWS_API_URL is set and MONGODB_URI is not, and content.js
 // turns the result into stories and editions next to the ones in content/.
 // Render's free plan sleeps when idle, so the first request can take about a minute while the server wakes up.
-// If the desk app can't be reached the build fails, and the live site stays as it was until the next hourly run.
+// If the desk app can't be reached, /healthz stays 503, so the GitHub Pages build fails and the live site stays as it was.
 
 const TIMEOUT_MS = 120000;
 const TRIES = 3;

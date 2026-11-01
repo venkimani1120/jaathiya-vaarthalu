@@ -66,7 +66,7 @@ Every text/background pair meets WCAG AA (4.5:1). Never use --gold for text; use
 - **Ads:** reserve slot height to prevent layout shift; label them "ప్రకటన".
 
 ## UI principles
-1. **Speed is design.** Images lazy-load, WebP, explicit width/height. The one carousel (home hero) is a CSS scroll-snap strip that works without JS; `public/js/site.js` adds arrows, dots and autoplay, which pauses on hover/focus, has a pause button, and is off for reduced-motion users.
+1. **Speed is design.** Images lazy-load, WebP, explicit width/height. The one carousel (home hero) is a CSS scroll-snap strip that works without JS; `frontend/public/js/site.js` adds arrows, dots and autoplay, which pauses on hover/focus, has a pause button, and is off for reduced-motion users.
 2. **Cards for stories:** rounded cards (16:9 image, category, headline, date) in an auto-fill grid. Section headings carry a short saffron bar.
 3. **One accent per job:** royal violet for brand/actions, gold for highlights and the main call to action, crimson only for breaking news, emerald only for status.
 4. **Motion:** none except the ticker scroll (paused on reduced-motion) and tap feedback.
@@ -80,4 +80,4 @@ Every text/background pair meets WCAG AA (4.5:1). Never use --gold for text; use
   as on the letterhead. On mobile, move these to the footer and keep only the logo and menu.
 - **Footer (required for a registered newspaper):** RNI number, Editor & Publisher name, publishing centre (Narasaraopet),
   Guntur office address, phone, "Established 2025". All values live in `config/site.json`.
-- **Logo:** the new logo (`public/logo.png`) is an India map with a torch, navy lettering and a saffron/green flame. It reads "JAATHIYA VAARTALU / NEWS" in English only. For a Telugu-first site, ask for a version with the Telugu wordmark జాతియ వార్తలు, since the letterhead logo is red with Telugu lettering.
+- **Logo:** the new logo (`frontend/public/logo.png`) is an India map with a torch, navy lettering and a saffron/green flame. It reads "JAATHIYA VAARTALU / NEWS" in English only. For a Telugu-first site, ask for a version with the Telugu wordmark జాతియ వార్తలు, since the letterhead logo is red with Telugu lettering.

@@ -1,21 +1,21 @@
 # Content guide
 
-Everything on the website comes from the files in this folder. To change the site, edit a file here (on GitHub: open the file, click the pencil, then **Commit changes**). The site updates by itself in about two to three minutes.
+Everything on the website comes from the files in this folder. To change the site, edit a file here (on GitHub: open the file, click the pencil, then **Commit changes**). The site updates by itself in about five minutes.
 
-If a file has a mistake, the deploy stops and the live site stays as it was. To see what went wrong, open the service in the Render dashboard, click the failed deploy, and read the list of problems in its log.
+If a file has a mistake, the deploy stops and the live site stays as it was. To see what went wrong, open the `jaathiya-vaarthalu-api` service in the Render dashboard, click the failed deploy, and read the list of problems in its log.
 
 Times are India time, written as `2026-10-10 09:30`. Dates are written as `2026-10-10`.
 
 ## News from the news desk app
 
-The website reads the desk app's database every 2 minutes and shows:
+The website reads the desk app's database every 2 minutes (the API service reads it, and the website reads the API), so changes show up within about 4 minutes. It shows:
 
-- **Approved news** (reporter, desk and e-paper news, once an editor approves it). A story is on the site within about 2 minutes of approval, at `/article/<its id>/`. The lists, search and sitemaps show the last 90 days (`NEWS_DAYS` on Render); older stories still open from their link.
+- **Approved news** (reporter, desk and e-paper news, once an editor approves it). A story is on the site within about 4 minutes of approval, at `/article/<its id>/`. The lists, search and sitemaps show the last 90 days (`NEWS_DAYS` on the API service); older stories still open from their link.
 - **Published e-papers**: each edition links to the desk app's reader (`/e/<link>`).
 
-Edit or delete these stories in the desk app, not here. A story changed or taken back in the desk app changes or leaves the site within 2 minutes. Stories here and editions in `epaper.json` are still shown next to them. The desk sections map to these website sections: State → `state`, District and Constituency → `district`, Sports → `sports`, Business → `business`.
+Edit or delete these stories in the desk app, not here. A story changed or taken back in the desk app changes or leaves the site within about 4 minutes. Stories here and editions in `epaper.json` are still shown next to them. The desk sections map to these website sections: State → `state`, District and Constituency → `district`, Sports → `sports`, Business → `business`.
 
-Changes to the files in this folder go live when Render redeploys after the commit, in about 2 to 3 minutes. Scheduled stories (`published_at` in the future) and ad dates take effect within 2 minutes of their time.
+Changes to the files in this folder go live when Render redeploys the API service after the commit, in about 2 to 3 minutes, and the website picks them up within 2 more minutes. Scheduled stories (`published_at` in the future) and ad dates take effect within about 4 minutes of their time.
 
 ## Add a story: `articles/<web-address>.json`
 
@@ -38,7 +38,7 @@ The file name becomes the story's web address, so `articles/guntur-rain-alert.js
 - **`body`:** HTML. Wrap each paragraph in `<p>…</p>`. Use `<h2>` for subheadings and `<a href="…">` for links.
 - **`section`:** a `slug` from `categories.json`, such as `politics`, `state`, `national`, `sports`, `cinema` or `business`.
 - **`image`:** first upload the photo to `images/` (JPG or WebP, ideally 1280 px wide and under 300 KB), then put its path here. A full `https://` link also works.
-- **`published_at` in the future:** the story stays hidden and goes live within 2 minutes of that time.
+- **`published_at` in the future:** the story stays hidden and goes live within about 4 minutes of that time.
 - **`"draft": true`:** keeps the story off the site.
 - **`"breaking": true`:** shows the story in the red ticker. Set it back to `false` when the news is no longer breaking.
 - **`"updated_at": "2026-10-10 14:00"`:** optional. Tells Google when you corrected a story.

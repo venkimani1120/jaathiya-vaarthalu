@@ -1,4 +1,4 @@
-// Search page: filters /search-index.json (built by src/build.js) in the browser.
+// Search page: filters /search-index.json (made by renderSite in src/render.js) in the browser.
 // The page's language-specific strings and links come from data- attributes on #search-results.
 (() => {
   const box = document.getElementById('search-results');

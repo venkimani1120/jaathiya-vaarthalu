@@ -1,10 +1,12 @@
-// Page templates. src/build.js calls renderSite() once and writes every returned file to dist/.
+// Page templates. src/server.js renders createSite() routes on request; src/build.js writes renderSite() to dist/.
+// The data comes from the backend API (src/api.js).
 // Every page is built in English (at /) and Telugu (under /te/); the toggle links to the same page in the other language.
 // Reading works without JS; /js/site.js drives the hero carousel and the WhatsApp enquiry form, /js/search.js runs search.
 const { LANGS, STR, pick } = require('./i18n');
-const { isUrl } = require('./content');
 
 const PAGE = 20;
+
+const isUrl = (p) => /^https?:\/\//.test(p);
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const plain = (html, n = 160) => Array.from(String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, n).join('');
