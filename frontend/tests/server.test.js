@@ -34,6 +34,17 @@ const { apiData, stubApi, ID, OLD } = require('./fixture');
     assert((await get(`/te/article/${OLD}/`)).t.includes('పాత వార్త'), 'stories older than NEWS_DAYS open by their id');
     assert.strictEqual((await get(`/article/${'9'.repeat(24)}/`)).s, 404);
     assert((await get('/epaper/')).t.includes('href="https://desk.example/e/gnt-1010"'));
+    // Today has no news (the fixture's newest day is 2026-10-10): the home page says so and shows that day
+    assert((await get('/')).t.includes('class="note"'));
+    // Date filter without JS, day pages, and dates with nothing on them
+    assert.strictEqual((await get('/old-news/?date=2026-09-05')).h.get('location'), '/old-news/2026-09-05/');
+    assert.strictEqual((await get('/te/epaper/?date=2026-10-09')).h.get('location'), '/te/epaper/2026-10-09/');
+    assert((await get('/old-news/2026-09-05/')).t.includes('Old 5<'));
+    assert.strictEqual((await get('/old-news/2026-08-01')).h.get('location'), '/old-news/2026-08-01/');
+    const empty = await get('/te/old-news/2026-08-01/');
+    assert(empty.s === 200 && empty.t.includes('ఈ తేదీన వార్తలు లేవు') && empty.t.includes('noindex'));
+    assert((await get('/epaper/2026-08-01/')).t.includes('No e-paper for this date'));
+    assert((await get('/old-news/2026-02-31/')).s === 404 && (await get('/old-news/?date=x')).s === 200);
     assert((await get('/css/site.css')).s === 200 && (await get('/fonts/README.txt')).s === 404 && (await get('/../package.json')).s === 404);
     const img = await get('/images/win.jpg');
     assert(img.s === 200 && img.t === 'jpeg /images/win.jpg' && img.h.get('content-type') === 'image/jpeg', 'images come from the API');

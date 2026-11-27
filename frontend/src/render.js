@@ -14,6 +14,8 @@ const jsonLd = (o) => `<script type="application/ld+json">${JSON.stringify(o).re
 // Section (category) names follow the UI language. English is the main name, so either language falls back to the other.
 const secName = (o, f, L) => (o && (L === 'te' ? o[`${f}_te`] || o[`${f}_en`] : o[`${f}_en`] || o[`${f}_te`])) || '';
 const istDay = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // "YYYY-MM-DD"
+// A real calendar day as "YYYY-MM-DD" (rejects 2026-02-31 and the like)
+const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(`${s}T12:00:00+05:30`)) && istDay(new Date(`${s}T12:00:00+05:30`)) === s;
 
 // Line icons (stroke = currentColor), used in the value rows and buttons
 const ICON = {
@@ -47,10 +49,20 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
   const absUrl = (L, p) => ORIGIN + url(L, p);
   const artPath = (a) => `/article/${encodeURIComponent(a.slug)}/`;
   const catPath = (c) => `/category/${encodeURIComponent(c.slug)}/`;
-  const latestIn = (slug) => articles.filter((a) => a.cat && a.cat.slug === slug);
-  const brk = articles.filter((a) => a.breaking).slice(0, 8);
+  const inSec = (l, slug) => l.filter((a) => a.cat && a.cat.slug === slug);
+  const latestIn = (slug) => inSec(articles, slug);
   const lastEdition = editions[0];
   const today = istDay(now);
+  // The home and section pages show one day's news: today's, or until something is published today, the latest day
+  // that has news. Every other day is under /old-news/<day>/, and e-paper editions under /epaper/<day>/.
+  const byDay = new Map();
+  for (const a of articles) { const d = istDay(a.date); byDay.set(d, [...(byDay.get(d) || []), a]); }
+  const newsDays = [...byDay.keys()].sort().reverse();
+  const curDay = newsDays[0] || today;
+  const current = byDay.get(curDay) || [];
+  const currentIn = (slug) => inSec(current, slug);
+  const edDays = [...new Set(editions.map((x) => x.date))].sort().reverse();
+  const brk = current.filter((a) => a.breaking).slice(0, 8);
   // WhatsApp needs the number with its country code; a 10-digit Indian mobile gets 91 in front
   const waNum = ((d) => (d.length === 10 ? '91' + d : d))(String(site.whatsapp || site.phone).replace(/\D/g, ''));
 
@@ -64,8 +76,17 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
     const card = (a, h = 'h3', eager) => { const cat = secName(a.cat, 'name', L); return `<article class="card"><a href="${esc(u(artPath(a)))}">${a.image ? pic(a, '', eager) : '<div class="ph" aria-hidden="true"></div>'}
 <div class="card-body">${cat ? `<span class="cat">${esc(cat)}</span>` : ''}<${h}>${esc(a.title)}</${h}><span class="date">${fmt(a.date)}</span></div></a></article>`; };
     const grid = (l, h) => `<div class="grid">${l.map((a) => card(a, h)).join('')}</div>`;
-    const secHead = (title, more) => `<div class="sec-head"><h2>${esc(title)}</h2>${more ? `<a class="more" href="${esc(u(more))}">${T.seeAll}</a>` : ''}</div>`;
-    return { L, T, u, NAME: pick(site, 'name', L), fmt, fmtDay, pic, grid, secHead, price: (p) => (p ? esc(p) : `<span class="ask">${T.askPrice}</span>`) };
+    const secHead = (title, more, moreText = T.seeAll) => `<div class="sec-head"><h2>${esc(title)}</h2>${more ? `<a class="more" href="${esc(u(more))}">${moreText}</a>` : ''}</div>`;
+    const dayTitle = curDay === today ? T.todaysNews : T.newsOn(fmtDay(curDay));
+    // Date filter: a GET form, so without JS the server turns ?date= into the day's page; site.js goes there directly
+    const dateForm = (base, days, value = '') => `<form class="date-form" action="${esc(u(base))}" method="get" data-base="${esc(u(base))}">
+<label for="date-pick">${T.pickDate}</label><div class="date-row"><input id="date-pick" type="date" name="date" required min="${days.length ? days[days.length - 1] : today}" max="${today}" value="${esc(value)}"><button>${icon('search')}${T.show}</button></div></form>`;
+    // Earlier / later day among `days` (newest first) on a /<base>/<day>/ page
+    const dayPager = (base, days, d) => {
+      const older = days.find((x) => x < d), newer = [...days].reverse().find((x) => x > d);
+      return `<nav class="pager">${older ? `<a class="btn ghost" href="${esc(u(`${base}${older}/`))}">${T.olderDay}</a>` : '<span></span>'}${newer ? `<a class="btn ghost" href="${esc(u(`${base}${newer}/`))}">${T.newerDay}</a>` : ''}</nav>`;
+    };
+    return { L, T, u, NAME: pick(site, 'name', L), fmt, fmtDay, pic, grid, secHead, dayTitle, dateForm, dayPager, price: (p) => (p ? esc(p) : `<span class="ask">${T.askPrice}</span>`) };
   };
 
   // o.path is the page's site path without the language prefix, e.g. "/advertise/"
@@ -75,9 +96,9 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
     const title = o.title ? `${o.title} | ${NAME}` : `${NAME}: ${tag}`;
     const desc = o.desc || T.defaultDesc(NAME, tag);
     // Marks the link for the current page (or, on an article, its section) for the active nav style
-    const cur = (p) => (p === o.path || (o.section && p === catPath(o.section)) ? ' aria-current="page"' : '');
+    const cur = (p) => (p === o.path || p === o.nav || (o.section && p === catPath(o.section)) ? ' aria-current="page"' : '');
     const catLinks = cats.map((c) => `<a href="${esc(u(catPath(c)))}"${cur(catPath(c))}>${esc(secName(c, 'name', L))}</a>`).join('');
-    const primary = [['/epaper/', T.epaper], ['/advertise/', T.advertise], ['/subscribe/', T.subscribe]].map(([p, t]) => `<a href="${u(p)}"${cur(p)}>${t}</a>`).join('');
+    const primary = [['/old-news/', T.oldNews], ['/epaper/', T.epaper], ['/advertise/', T.advertise], ['/subscribe/', T.subscribe]].map(([p, t]) => `<a href="${u(p)}"${cur(p)}>${t}</a>`).join('');
     const toggle = `<a class="lang" href="${esc(url(T.switchTo, o.path))}" hreflang="${T.switchTo}" lang="${T.switchTo}" aria-label="${esc(T.switchAria)}">${icon('globe')}${T.switchLabel}</a>`;
     const search = (id) => `<form class="search" action="${u('/search/')}" role="search"><label class="sr" for="${id}">${T.search}</label><input id="${id}" name="q" type="search" minlength="3" placeholder="${T.searchPh}"><button aria-label="${T.search}">${icon('search')}</button></form>`;
     const alt = o.noindex ? '' : LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${esc(absUrl(l, o.path))}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${esc(absUrl('en', o.path))}">`;
@@ -114,7 +135,7 @@ ${brk.length ? `<div class="ticker"><div class="wrap"><b>${T.breaking}</b>${brk.
 <footer class="foot"><div class="wrap foot-grid">
 <div><img class="logo" src="${asset('logo.png')}" alt="${esc(NAME)}" width="120" height="60" loading="lazy"><p><b>${esc(NAME)}</b><br>${esc(tag)}, ${T.established} ${site.established}</p><p>RNI No. ${esc(site.rni_number)}</p></div>
 <div><h3>${T.sections}</h3>${catLinks}</div>
-<div><h3>${T.services}</h3><a href="${u('/epaper/')}">${T.epaper}</a><a href="${u('/advertise/')}">${T.advertiseWithUs}</a><a href="${u('/subscribe/')}">${T.printSub}</a><a href="${asset('rss.xml')}">RSS</a></div>
+<div><h3>${T.services}</h3><a href="${u('/old-news/')}">${T.oldNews}</a><a href="${u('/epaper/')}">${T.epaper}</a><a href="${u('/advertise/')}">${T.advertiseWithUs}</a><a href="${u('/subscribe/')}">${T.printSub}</a><a href="${asset('rss.xml')}">RSS</a></div>
 <div><h3>${T.contact}</h3><p>${T.editorPub}: ${esc(pick(site, 'editor_publisher', L))}</p><p>${esc(pick(site, 'address', L))}</p><p>${T.phone}: <a href="tel:${esc(site.phone)}">${esc(site.phone)}</a></p></div>
 </div><div class="wrap foot-bottom">© ${now.getFullYear()} ${esc(NAME)}. ${T.rights}</div></footer>
 </body></html>`;
@@ -149,17 +170,18 @@ ${a.summary ? `<p>${esc(a.summary)}</p>` : ''}<a class="btn light" href="${h}" t
   };
 
   const home = (L) => {
-    const c = ctx(L), { T, u, NAME, grid, secHead, fmtDay } = c;
-    const top = articles.slice(0, 15);
+    const c = ctx(L), { T, u, NAME, grid, secHead, fmtDay, dayTitle } = c;
+    const top = current.slice(0, 15);
     if (!top.length) return page(L, { path: '/', body: `<div class="wrap pad"><p>${T.noNewsYet}</p></div>` });
+    const note = curDay === today ? '' : `<div class="wrap"><p class="note">${esc(T.notToday(fmtDay(curDay)))} <a href="${u('/old-news/')}">${T.oldNews}</a></p></div>`;
     // Lead story plus the next two stories that have photos go into the carousel
     const slides = [top[0], ...top.slice(1).filter((a) => a.image).slice(0, 2)];
     const rest = top.filter((a) => !slides.includes(a)).slice(0, 8);
     const e = lastEdition;
-    const blocks = cats.map((cat) => ({ cat, items: latestIn(cat.slug).slice(0, 4) })).filter((b) => b.items.length);
-    return page(L, { path: '/', image: top[0].image, body: `${hero(c, slides, e)}
+    const blocks = cats.map((cat) => ({ cat, items: currentIn(cat.slug).slice(0, 4) })).filter((b) => b.items.length);
+    return page(L, { path: '/', image: top[0].image, body: `${note}${hero(c, slides, e)}
 <section class="wrap pad">${values(T.homeValues)}</section>
-${rest.length ? `<section class="wrap pad">${secHead(T.latestNews)}${grid(rest)}</section>` : ''}
+<section class="wrap pad">${secHead(dayTitle, '/old-news/', T.oldNewsLink)}${rest.length ? grid(rest) : ''}</section>
 ${e ? `<section class="band band-alt"><div class="wrap feature">${e.thumb ? `<img class="paper-thumb" src="${esc(asset(e.thumb))}" alt="" loading="lazy" width="220">` : icon('paper', 'ic ic-xl')}
 <div><span class="kicker">${T.epKicker}</span><h2>${esc(T.epH(fmtDay(e.date)))}</h2><p>${T.epP}</p><a class="btn" href="${u('/epaper/')}">${T.readEpaper}</a></div></div></section>` : ''}
 ${blocks.map((b) => `<section class="wrap pad">${secHead(secName(b.cat, 'name', L), catPath(b.cat))}${grid(b.items)}</section>`).join('')}
@@ -184,16 +206,16 @@ ${related.length ? `<section class="wrap pad">${secHead(T.moreNews, catPath(a.ca
         publisher: { '@type': 'Organization', name: site.name_en, logo: { '@type': 'ImageObject', url: absAsset('logo.png') } } } });
   };
 
-  // A section's stories, 20 per page: /category/x/, /category/x/page/2/, ...
+  // A section's stories of the current day, 20 per page: /category/x/, /category/x/page/2/, ...
   const category = (L, c) => {
-    const { T, u, grid } = ctx(L);
-    const all = latestIn(c.slug), pages = Math.max(1, Math.ceil(all.length / PAGE)), h1 = secName(c, 'name', L);
+    const { T, u, grid, dayTitle } = ctx(L);
+    const all = currentIn(c.slug), pages = Math.max(1, Math.ceil(all.length / PAGE)), h1 = secName(c, 'name', L);
     const at = (n) => catPath(c) + (n > 1 ? `page/${n}/` : '');
     return Array.from({ length: pages }, (_, i) => {
       const n = i + 1, items = all.slice(i * PAGE, n * PAGE);
       const pager = `<nav class="pager">${n > 1 ? `<a class="btn ghost" rel="prev" href="${esc(u(at(n - 1)))}">${T.prev}</a>` : '<span></span>'}${n < pages ? `<a class="btn ghost" rel="next" href="${esc(u(at(n + 1)))}">${T.next}</a>` : ''}</nav>`;
       return [at(n), page(L, { title: h1, path: at(n),
-        body: `<div class="pagehead"><div class="wrap"><h1>${esc(h1)}</h1></div></div><div class="wrap pad">${items.length ? grid(items, 'h2') : `<p>${T.emptySection}</p>`}${pager}</div>` })];
+        body: `<div class="pagehead"><div class="wrap"><h1>${esc(h1)}</h1><p>${esc(dayTitle)}</p></div></div><div class="wrap pad">${items.length ? grid(items, 'h2') : `<p>${T.emptySection}</p>`}${pager}<p class="note"><a href="${u('/old-news/')}">${T.oldNewsLink}</a></p></div>` })];
     });
   };
 
@@ -209,15 +231,43 @@ ${related.length ? `<section class="wrap pad">${secHead(T.moreNews, catPath(a.ca
   };
 
   // An edition is a PDF (epaper.json) or a link to the desk app's e-paper reader (src/remote.js)
+  const paperCards = (c, list) => { const { T, fmtDay } = c; return `<div class="grid">${list.map((x) => `<a class="card paper-card" href="${esc(asset(x.pdf || x.link))}" target="_blank" rel="noopener">${x.thumb ? `<img src="${esc(asset(x.thumb))}" alt="" loading="lazy" width="400">` : `<div class="ph" aria-hidden="true">${icon('paper', 'ic ic-xl')}</div>`}<div class="card-body"><span class="cat">${esc(fmtDay(x.date))}</span><h2>${esc(x.name || T.epaper)}</h2><span class="btn">${x.pdf ? T.readPdf : T.readEpaper}</span></div></a>`).join('')}</div>`; };
   const epaper = (L) => {
-    const { T, u, fmtDay } = ctx(L);
+    const c = ctx(L), { T, u, fmtDay, dateForm } = c;
     const latest = editions.filter((x) => x.date === (lastEdition && lastEdition.date));
     const older = editions.slice(latest.length);
     return page(L, { title: T.epaper, path: '/epaper/',
       body: `<div class="pagehead"><div class="wrap"><h1>${T.epaper}</h1><p>${T.epIntro}</p></div></div>
-<div class="wrap pad">${latest.length ? `<div class="grid">${latest.map((x) => `<a class="card paper-card" href="${esc(asset(x.pdf || x.link))}" target="_blank" rel="noopener">${x.thumb ? `<img src="${esc(asset(x.thumb))}" alt="" loading="lazy" width="400">` : `<div class="ph" aria-hidden="true">${icon('paper', 'ic ic-xl')}</div>`}<div class="card-body"><span class="cat">${esc(fmtDay(x.date))}</span><h2>${esc(x.name || T.epaper)}</h2><span class="btn">${x.pdf ? T.readPdf : T.readEpaper}</span></div></a>`).join('')}</div>` : `<p>${T.noEdition}</p>`}
-${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => `<li><a href="${esc(asset(x.pdf || x.link))}" target="_blank" rel="noopener">${esc(fmtDay(x.date))}${x.name ? ` · ${esc(x.name)}` : ''}</a></li>`).join('')}</ul>` : ''}
+<div class="wrap pad">${latest.length ? paperCards(c, latest) : `<p>${T.noEdition}</p>`}
+${edDays.length ? `<h2>${T.epFind}</h2>${dateForm('/epaper/', edDays)}` : ''}
+${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => `<li><a href="${esc(u(`/epaper/${x.date}/`))}">${esc(fmtDay(x.date))}${x.name ? ` · ${esc(x.name)}` : ''}</a></li>`).join('')}</ul>` : ''}
 </div>` });
+  };
+  // One date's editions: /epaper/2026-11-27/
+  const epaperDay = (L, d) => {
+    const c = ctx(L), { T, fmtDay, dateForm, dayPager } = c;
+    const list = editions.filter((x) => x.date === d), h1 = T.epH(fmtDay(d));
+    return page(L, { title: h1, path: `/epaper/${d}/`, nav: '/epaper/', noindex: !list.length,
+      body: `<div class="pagehead"><div class="wrap"><h1>${esc(h1)}</h1></div></div>
+<div class="wrap pad">${list.length ? paperCards(c, list) : `<p>${T.noEditionOn}</p>`}${dayPager('/epaper/', edDays, d)}<h2>${T.epFind}</h2>${dateForm('/epaper/', edDays, d)}</div>` });
+  };
+
+  // Old news: a date filter and the earlier days that have news
+  const oldNews = (L) => {
+    const { T, u, fmtDay, dateForm } = ctx(L);
+    const days = newsDays.filter((d) => d !== curDay);
+    return page(L, { title: T.oldNews, path: '/old-news/',
+      body: `<div class="pagehead"><div class="wrap"><h1>${T.oldNews}</h1><p>${T.oldIntro}</p></div></div>
+<div class="wrap pad">${dateForm('/old-news/', newsDays)}
+<h2>${T.earlierDays}</h2>${days.length ? `<ul class="archive">${days.map((d) => `<li><a href="${esc(u(`/old-news/${d}/`))}">${esc(fmtDay(d))} · ${T.stories(byDay.get(d).length)}</a></li>`).join('')}</ul>` : `<p>${T.noOldNews}</p>`}</div>` });
+  };
+  // One day's news, every section: /old-news/2026-11-15/
+  const oldNewsDay = (L, d) => {
+    const { T, fmtDay, grid, dateForm, dayPager } = ctx(L);
+    const list = byDay.get(d) || [], h1 = T.newsOn(fmtDay(d));
+    return page(L, { title: h1, path: `/old-news/${d}/`, nav: '/old-news/', noindex: !list.length,
+      body: `<div class="pagehead"><div class="wrap"><h1>${esc(h1)}</h1></div></div>
+<div class="wrap pad">${list.length ? grid(list, 'h2') : `<p>${T.noNewsOn}</p>`}${dayPager('/old-news/', newsDays, d)}<h2>${T.pickDate}</h2>${dateForm('/old-news/', newsDays, d)}</div>` });
   };
 
   // Enquiry form → WhatsApp. site.js writes every filled-in field into the hidden "text" field before the form opens
@@ -278,11 +328,14 @@ ${enquiryForm(c, 'subscription', plans, 'plan', T.subEnqH)}` });
       // A section's pages are rendered together; the first request renders and keeps them
       let pages;
       const all = () => (pages = pages || new Map(category(L, c)));
-      const n = Math.max(1, Math.ceil(latestIn(c.slug).length / PAGE));
+      const n = Math.max(1, Math.ceil(currentIn(c.slug).length / PAGE));
       for (let i = 1; i <= n; i++) { const at = catPath(c) + (i > 1 ? `page/${i}/` : ''); put(L, at, () => all().get(at)); }
     }
     put(L, '/search/', () => searchPage(L));
     put(L, '/epaper/', () => epaper(L));
+    for (const d of edDays) put(L, `/epaper/${d}/`, () => epaperDay(L, d));
+    put(L, '/old-news/', () => oldNews(L));
+    for (const d of newsDays) put(L, `/old-news/${d}/`, () => oldNewsDay(L, d));
     put(L, '/advertise/', () => advertise(L));
     put(L, '/subscribe/', () => subscribe(L));
   }
@@ -297,13 +350,15 @@ ${enquiryForm(c, 'subscription', plans, 'plan', T.subEnqH)}` });
   // ---- SEO feeds (language independent) ----
   const xml = (body) => '<?xml version="1.0" encoding="UTF-8"?>\n' + body;
   out.set('robots.txt', () => `User-agent: *\nAllow: /\nSitemap: ${absAsset('sitemap.xml')}\nSitemap: ${absAsset('news-sitemap.xml')}\n`);
-  const pages = ['/', '/epaper/', '/advertise/', '/subscribe/', ...cats.map(catPath)];
+  const pages = ['/', '/old-news/', '/epaper/', '/advertise/', '/subscribe/', ...cats.map(catPath), ...newsDays.map((d) => `/old-news/${d}/`), ...edDays.map((d) => `/epaper/${d}/`)];
   const urls = LANGS.flatMap((L) => [...pages.map((p) => ({ p: absUrl(L, p) })), ...articles.slice(0, 5000).map((a) => ({ p: absUrl(L, artPath(a)), m: a.updated }))]);
   out.set('sitemap.xml', () => xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((x) => `<url><loc>${esc(x.p)}</loc>${x.m ? `<lastmod>${x.m.toISOString()}</lastmod>` : ''}</url>`).join('')}</urlset>`));
   const recent = articles.filter((a) => now - a.date <= 2 * 864e5).slice(0, 1000);
   out.set('news-sitemap.xml', () => xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${recent.map((a) => `<url><loc>${esc(absUrl('en', artPath(a)))}</loc><news:news><news:publication><news:name>${esc(site.name_en)}</news:name><news:language>te</news:language></news:publication><news:publication_date>${a.date.toISOString()}</news:publication_date><news:title>${esc(a.title)}</news:title></news:news></url>`).join('')}</urlset>`));
   out.set('rss.xml', () => xml(`<rss version="2.0"><channel><title>${esc(site.name_te)}</title><link>${esc(absUrl('en', '/'))}</link><description>${esc(site.tagline_te)}</description><language>te</language>${articles.slice(0, 30).map((a) => `<item><title>${esc(a.title)}</title><link>${esc(absUrl('en', artPath(a)))}</link><guid>${esc(absUrl('en', artPath(a)))}</guid><pubDate>${a.date.toUTCString()}</pubDate><description>${esc(a.summary)}</description></item>`).join('')}</channel></rss>`));
-  return { routes: out, article: (L, a) => article(L, a), artFile: (L, a) => fileOf((L === 'te' ? '/te' : '') + artPath(a)) };
+  // A day page for a date with no news or edition (the server renders these on request; the static build has none)
+  const dayPage = (L, kind, d) => (isDay(d) ? (kind === 'epaper' ? epaperDay(L, d) : oldNewsDay(L, d)) : null);
+  return { routes: out, article: (L, a) => article(L, a), dayPage, artFile: (L, a) => fileOf((L === 'te' ? '/te' : '') + artPath(a)) };
 }
 
 // Static build: every page as text

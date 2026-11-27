@@ -67,3 +67,14 @@ document.querySelectorAll('.wa-form').forEach((form) => {
     text.value = lines.join('\n');
   });
 });
+
+// Date filter (old news, e-paper): go straight to the day's page, /old-news/2026-11-15/.
+// Without this script the form sends ?date=, which the web server redirects to the same page.
+document.querySelectorAll('.date-form').forEach((form) => {
+  form.addEventListener('submit', (e) => {
+    const v = form.querySelector('input[type="date"]').value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    e.preventDefault();
+    location.href = form.dataset.base + v + '/';
+  });
+});

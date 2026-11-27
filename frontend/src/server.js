@@ -61,6 +61,15 @@ function createServer({ publicDir = path.join(ROOT, 'public'), siteUrl, api, log
     return remember(file, found);
   }
 
+  // /old-news/<day>/ or /epaper/<day>/ for a real date with nothing on it: a "nothing on this date" page
+  function dayFile(file) {
+    const m = /^(te\/)?(old-news|epaper)\/(\d{4}-\d{2}-\d{2})\/index\.html$/.exec(file);
+    if (!m) return null;
+    if (cache.has(file)) return cache.get(file);
+    const html = site.dayPage(m[1] ? 'te' : 'en', m[2], m[3]);
+    return html ? remember(file, entry(html, TYPES['.html'])) : null;
+  }
+
   function page(file) {
     if (cache.has(file)) return cache.get(file);
     const fn = site.routes.get(file);
@@ -104,11 +113,14 @@ function createServer({ publicDir = path.join(ROOT, 'public'), siteUrl, api, log
     if (!site) return res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Retry-After': '30' }).end('Starting, please try again in a minute');
     if (BP && !(p + '/').startsWith(BP + '/')) return send(req, res, 404, page('404.html'), 60);
     p = p.slice(BP.length) || '/';
+    // The date filter without JS: /old-news/?date=2026-11-15 → /old-news/2026-11-15/ (same for /epaper/)
+    const date = /^(\/te)?\/(old-news|epaper)\/$/.test(p) && new URL(req.url, 'http://x').searchParams.get('date');
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return res.writeHead(302, { Location: encodeURI(`${BP}${p}${date}/`) }).end();
     const file = p.replace(/^\/+/, '') + (p.endsWith('/') ? 'index.html' : '');
-    const hit = page(file) || (await oldStory(file));
+    const hit = page(file) || (await oldStory(file)) || dayFile(file);
     if (hit) return send(req, res, 200, hit, 60);
     // /article/x → /article/x/, like GitHub Pages
-    if (!p.endsWith('/') && (site.routes.has(file + '/index.html') || /^\/(te\/)?article\/[a-f0-9]{24}$/.test(p))) {
+    if (!p.endsWith('/') && (site.routes.has(file + '/index.html') || /^\/(te\/)?(article\/[a-f0-9]{24}|(old-news|epaper)\/\d{4}-\d{2}-\d{2})$/.test(p))) {
       return res.writeHead(301, { Location: encodeURI(BP + p + '/') }).end();
     }
     const img = file.startsWith('images/') && (await image(file));
