@@ -98,7 +98,7 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
     // Marks the link for the current page (or, on an article, its section) for the active nav style
     const cur = (p) => (p === o.path || p === o.nav || (o.section && p === catPath(o.section)) ? ' aria-current="page"' : '');
     const catLinks = cats.map((c) => `<a href="${esc(u(catPath(c)))}"${cur(catPath(c))}>${esc(secName(c, 'name', L))}</a>`).join('');
-    const primary = [['/old-news/', T.oldNews], ['/epaper/', T.epaper], ['/advertise/', T.advertise], ['/subscribe/', T.subscribe]].map(([p, t]) => `<a href="${u(p)}"${cur(p)}>${t}</a>`).join('');
+    const primary = [['/epaper/', T.epaper], ['/advertise/', T.advertise], ['/subscribe/', T.subscribe], ['/old-news/', T.oldNews]].map(([p, t]) => `<a href="${u(p)}"${cur(p)}>${t}</a>`).join('');
     const toggle = `<a class="lang" href="${esc(url(T.switchTo, o.path))}" hreflang="${T.switchTo}" lang="${T.switchTo}" aria-label="${esc(T.switchAria)}">${icon('globe')}${T.switchLabel}</a>`;
     const search = (id) => `<form class="search" action="${u('/search/')}" role="search"><label class="sr" for="${id}">${T.search}</label><input id="${id}" name="q" type="search" minlength="3" placeholder="${T.searchPh}"><button aria-label="${T.search}">${icon('search')}</button></form>`;
     const alt = o.noindex ? '' : LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${esc(absUrl(l, o.path))}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${esc(absUrl('en', o.path))}">`;
@@ -135,7 +135,7 @@ ${brk.length ? `<div class="ticker"><div class="wrap"><b>${T.breaking}</b>${brk.
 <footer class="foot"><div class="wrap foot-grid">
 <div><img class="logo" src="${asset('logo.png')}" alt="${esc(NAME)}" width="120" height="60" loading="lazy"><p><b>${esc(NAME)}</b><br>${esc(tag)}, ${T.established} ${site.established}</p><p>RNI No. ${esc(site.rni_number)}</p></div>
 <div><h3>${T.sections}</h3>${catLinks}</div>
-<div><h3>${T.services}</h3><a href="${u('/old-news/')}">${T.oldNews}</a><a href="${u('/epaper/')}">${T.epaper}</a><a href="${u('/advertise/')}">${T.advertiseWithUs}</a><a href="${u('/subscribe/')}">${T.printSub}</a><a href="${asset('rss.xml')}">RSS</a></div>
+<div><h3>${T.services}</h3><a href="${u('/epaper/')}">${T.epaper}</a><a href="${u('/advertise/')}">${T.advertiseWithUs}</a><a href="${u('/subscribe/')}">${T.printSub}</a><a href="${u('/old-news/')}">${T.oldNews}</a><a href="${asset('rss.xml')}">RSS</a></div>
 <div><h3>${T.contact}</h3><p>${T.editorPub}: ${esc(pick(site, 'editor_publisher', L))}</p><p>${esc(pick(site, 'address', L))}</p><p>${T.phone}: <a href="tel:${esc(site.phone)}">${esc(site.phone)}</a></p></div>
 </div><div class="wrap foot-bottom">© ${now.getFullYear()} ${esc(NAME)}. ${T.rights}</div></footer>
 </body></html>`;
