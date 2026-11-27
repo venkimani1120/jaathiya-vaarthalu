@@ -1,7 +1,7 @@
 // The news bulletin's voice: what the reader says for each story, and the MP3s made from it.
 // The frontend's /bulletin/ page (bulletinOf() in frontend/src/render.js) shows up to MAX stories of a day, breaking
 // news first; pick() here must choose the same stories. Each one gets a script (headline, summary, opening sentences),
-// and the current day's are voiced once (src/tts.js: Azure speech → Cloudinary). A file is named after a hash of its
+// and the current day's are voiced once (src/tts.js: Gemini or Azure speech → Cloudinary). A file is named after a hash of its
 // voice and script, so a story is voiced again only when its text changes, and nothing is voiced twice after a restart.
 const crypto = require('crypto');
 
@@ -78,7 +78,10 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
         spent.chars += size;
         known.set(name, await store.upload(name, mp3));
         made++;
-      } catch (e) { log.error(`Bulletin: story ${a.slug} not voiced: ${e.message}`); }
+      } catch (e) {
+        log.error(`Bulletin: story ${a.slug} not voiced: ${e.message}`);
+        if (e.status === 429) break; // rate limited: the rest waits for the next refresh
+      }
     }
     return made;
   }

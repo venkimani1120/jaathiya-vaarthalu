@@ -3,7 +3,7 @@
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { createVoicer, pick, script, hashOf, CHARS } = require('../src/bulletin');
-const { azure, cloudinary } = require('../src/tts');
+const { azure, gemini, wav, cloudinary } = require('../src/tts');
 const { createServer } = require('../src/server');
 
 const at = (iso) => new Date(iso);
@@ -47,6 +47,10 @@ const quiet = { error() {} };
   const capped = createVoicer({ tts, store: { list: async () => new Map(), upload: async (n) => n }, voice: 'v', dailyChars: 50, log: quiet });
   said.length = 0;
   assert.strictEqual(await capped.run(day), 1, 'the daily limit stops voicing');
+  // A rate limit (429) stops the run; the rest waits for the next refresh
+  let tries = 0;
+  const limited = createVoicer({ tts: async () => { tries++; throw Object.assign(new Error('429'), { status: 429 }); }, store: { list: async () => new Map(), upload: async (n) => n }, voice: 'v', log: quiet });
+  assert(await limited.run(day) === 0 && tries === 1, 'one try, then wait');
   const listDown = createVoicer({ tts, store: { list: async () => { throw new Error('down'); }, upload: async (n) => n }, voice: 'v', log: quiet });
   await assert.rejects(listDown.run(day), /down/);
 
@@ -60,7 +64,16 @@ const quiet = { error() {} };
       const page2 = String(url).includes('next_cursor=n2');
       return Response.json({ resources: [{ public_id: page2 ? 'jaathiya/bulletin/bbb' : 'jaathiya/bulletin/aaa', secure_url: page2 ? 'https://r/b.mp3' : 'https://r/a.mp3' }], ...(page2 ? {} : { next_cursor: 'n2' }) });
     }
-    if (String(url).endsWith('/video/upload')) return Response.json({ secure_url: 'https://res.cloudinary.com/demo/video/upload/v1/jaathiya/bulletin/ccc.mp3' });
+    if (String(url).includes('generativelanguage.googleapis.com')) {
+      const body = JSON.parse(o.body);
+      if (body.contents[0].parts[0].text.includes('LIMIT')) return new Response('quota', { status: 429 });
+      const data = body.contents[0].parts[0].text.includes('RIFF') ? Buffer.from('RIFFxxxxWAVEdata') : Buffer.from([1, 0, 2, 0, 3, 0, 4, 0]);
+      return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: data.toString('base64') } }] } }] });
+    }
+    if (String(url).endsWith('/video/upload')) {
+      const wavUp = o.body.get('file').type === 'audio/wav';
+      return Response.json({ secure_url: `https://res.cloudinary.com/demo/video/upload/v1/jaathiya/bulletin/${o.body.get('public_id').split('/').pop()}.${wavUp ? 'wav' : 'mp3'}` });
+    }
     return new Response('no', { status: 404 });
   };
   try {
@@ -79,6 +92,20 @@ const quiet = { error() {} };
     const sig = crypto.createHash('sha1').update(`public_id=jaathiya/bulletin/ccc&timestamp=${f.get('timestamp')}secret1`).digest('hex');
     assert(f.get('signature') === sig && f.get('file').type === 'audio/mpeg' && !f.has('api_secret'), 'signed with the secret, which is never sent');
     assert.throws(() => cloudinary('https://demo'), /CLOUDINARY_URL/);
+
+    // Gemini: the style instruction and the script lines, Telugu and the voice; PCM comes back wrapped as WAV
+    const g = gemini({ key: 'gk', voice: 'Kore', style: 'Read like a news anchor:' });
+    const out = await g(['శీర్షిక', 'వివరాలు']);
+    const gc = calls.at(-1), gb = JSON.parse(gc.o.body);
+    assert(gc.url === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:generateContent' && gc.o.headers['x-goog-api-key'] === 'gk');
+    assert(gb.contents[0].parts[0].text === 'Read like a news anchor:\n\nశీర్షిక\n\nవివరాలు' && gb.generationConfig.responseModalities[0] === 'AUDIO');
+    assert(gb.generationConfig.speechConfig.languageCode === 'te-IN' && gb.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName === 'Kore');
+    assert(out.subarray(0, 4).toString() === 'RIFF' && out.readUInt32LE(24) === 24000 && out.readUInt32LE(40) === 8 && out.length === 52, 'PCM → WAV, 24 kHz');
+    assert.strictEqual((await g(['RIFF'])).toString(), 'RIFFxxxxWAVEdata', 'WAV passes through');
+    await assert.rejects(g(['LIMIT']), (e) => e.status === 429);
+    // WAV goes up as WAV and is delivered as MP3
+    const wurl = await cl.upload('ddd', wav(Buffer.alloc(8), 24000));
+    assert(calls.at(-1).o.body.get('file').type === 'audio/wav' && wurl.endsWith('/jaathiya/bulletin/ddd.mp3'));
   } finally { global.fetch = realFetch; }
 
   // ---- /api/site carries script and audio for bulletin stories ----

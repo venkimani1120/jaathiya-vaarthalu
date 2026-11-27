@@ -26,9 +26,15 @@ Needs Node 22 or newer. From the repo root, `npm run dev` starts this and the we
 | `DESK_APP_URL` | The desk app's address. Desk e-papers link to its reader at `/e/<link>`. |
 | `NEWS_DAYS` | Days of approved news in `/api/site` (default 90). Older stories still open through `/api/news/<id>`. |
 | `REFRESH_SECONDS` | How often the news source is read again (default 120, at least 30). |
-| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | An Azure Speech resource's key and region (e.g. `centralindia`), for the news bulletin's voice. |
-| `CLOUDINARY_URL` | `cloudinary://<api key>:<api secret>@<cloud name>`, where the bulletin's MP3s are kept. The voice is on only when this and both Azure values are set. |
-| `AZURE_TTS_VOICE` | The voice (default `te-IN-ShrutiNeural`; `te-IN-MohanNeural` is the male voice). Changing it voices the bulletin again. |
+| `CLOUDINARY_URL` | `cloudinary://<api key>:<api secret>@<cloud name>`, where the bulletin's audio is kept. The voice is on only when this and a speech key are set. |
+| `GEMINI_API_KEY` | A Google AI Studio API key, for the news bulletin's voice (Gemini text-to-speech). |
+| `GEMINI_TTS_MODEL` | Default `gemini-3.8-flash-tts` (`gemini-3.8-flash-lite-tts` is cheaper). |
+| `GEMINI_TTS_VOICE` | One of Gemini's voices (default `Kore`). |
+| `GEMINI_TTS_STYLE` | The reading instruction put in front of each script (default: read like a calm, clear Telugu TV news anchor). |
+| `TTS_PROVIDER` | `gemini` (default) or `azure`. |
+| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_TTS_VOICE` | Azure speech instead of Gemini: a Speech resource's key and region (e.g. `centralindia`), and the voice (default `te-IN-ShrutiNeural`). |
+
+Changing the speech service, model, voice or style voices the current day's bulletin again.
 | `BULLETIN_DAILY_CHARS` | The most characters voiced in a day (default 20000), a spending limit. |
 
 With neither `MONGODB_URI` nor `NEWS_API_URL`, only `content/` is served.
@@ -55,15 +61,17 @@ The website's `/bulletin/` page plays each story's audio. After every refresh, i
 
 1. `pick()` takes the current day's bulletin: up to 10 stories, breaking news first, then newest first. This must match `bulletinOf()` in `frontend/src/render.js`.
 2. `script()` writes what the reader says: the headline, the summary, then whole opening sentences, up to 600 characters (the dateline the website adds is left out). The story text is read as written.
-3. A story whose script has no MP3 yet is read by Azure (`te-IN` neural voice, 600 ms pause between headline, summary and text) and the MP3 is uploaded to Cloudinary as `jaathiya/bulletin/<hash>.mp3`. The hash covers the voice and the script, so a story is voiced again only when its text changes. On start, the existing files are listed once, so a restart voices nothing twice.
+3. A story whose script has no audio yet is read aloud and uploaded to Cloudinary as `jaathiya/bulletin/<hash>`. The hash covers the voice and the script, so a story is voiced again only when its text changes. On start, the existing files are listed once, so a restart voices nothing twice.
+   - **Gemini** (default): the style instruction, then the headline, summary and text on separate lines, in Telugu (`te-IN`). Gemini returns WAV audio. It's kept as WAV, and listeners get it as MP3, because Cloudinary converts it when the address ends in `.mp3`. If the free tier's rate limit answers 429, the run stops and the rest is voiced on the next refresh.
+   - **Azure**: a `te-IN` neural voice through SSML, with 600 ms pauses between the parts, straight to MP3.
 4. `/api/site` then carries `script` and `audio` for those stories, and the website picks them up on its next refresh (within about 4 minutes).
 
 Only the current day is voiced. Earlier days keep the audio they got while they were current. A failed story is logged (`Bulletin: story … not voiced`) and tried again on the next refresh. At most 10 files are made per run, and no more than `BULLETIN_DAILY_CHARS` characters a day. A day of 10 stories is about 6,000 characters, so a month is about 180,000.
 
 **Set it up:**
-1. **Azure:** in the Azure portal, create a **Speech service** resource. Choose a region near India (e.g. Central India) and the free F0 tier to start. From **Keys and Endpoint**, copy **Key 1** and the **Location/Region**.
+1. **Gemini:** at [Google AI Studio](https://aistudio.google.com), sign in with a Google account and click **Get API key → Create API key**. On the free tier, AI Studio shows the model's rate limits, and Google may use the text sent to improve its products. To use Azure instead, create a **Speech service** resource in the Azure portal (Central India, free F0 tier) and copy **Key 1** and the region.
 2. **Cloudinary:** in the Cloudinary console, go to **Settings → API Keys** and copy the **API environment variable** (`cloudinary://…`). It can be the desk app's account; the files go in their own `jaathiya/bulletin/` folder.
-3. **Render:** on `jaathiya-vaarthalu-api`, go to **Environment** and set `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` and `CLOUDINARY_URL`, then save. The start log then says `bulletin voice on`.
+3. **Render:** on `jaathiya-vaarthalu-api`, go to **Environment** and set `GEMINI_API_KEY` and `CLOUDINARY_URL` (or, for Azure, `TTS_PROVIDER=azure`, `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`), then save. The start log then says `bulletin voice: Gemini gemini-3.8-flash-tts, Kore`.
 
 ## On Render
 Web service, Runtime **Node**, **Root Directory** `backend`, branch `main`, build command `npm ci && npm test`, start command `npm start`, **Health Check Path** `/healthz`. The settings are in [`../render.yaml`](../render.yaml).

@@ -22,8 +22,11 @@
 //   DESK_APP_URL     the desk app's address, for e-paper reader links (<app>/e/<link>)
 //   NEWS_DAYS        days of approved news in /api/site (default 90); older stories still open via /api/news/<id>
 //   REFRESH_SECONDS  how often the news source is read again (default 120)
-//   AZURE_SPEECH_KEY, AZURE_SPEECH_REGION, CLOUDINARY_URL  turn on the bulletin's voice (all three needed)
-//   AZURE_TTS_VOICE  default te-IN-ShrutiNeural (or te-IN-MohanNeural)
+//   CLOUDINARY_URL   where the bulletin's audio is kept; the voice needs it and one speech service:
+//   GEMINI_API_KEY   Gemini text-to-speech (Google AI Studio key); GEMINI_TTS_MODEL (default gemini-3.8-flash-tts),
+//                    GEMINI_TTS_VOICE (default Kore), GEMINI_TTS_STYLE (the reading instruction)
+//   AZURE_SPEECH_KEY, AZURE_SPEECH_REGION  Azure speech instead; AZURE_TTS_VOICE (default te-IN-ShrutiNeural)
+//   TTS_PROVIDER     gemini or azure, when keys for both are set (default gemini)
 //   BULLETIN_DAILY_CHARS  most characters voiced a day (default 20000), a spending limit
 // Without MONGODB_URI and NEWS_API_URL only content/ is served.
 const http = require('http');
@@ -130,19 +133,33 @@ if (require.main === module) {
     db = { fetchFromMongo: () => fetchRemote(process.env.NEWS_API_URL, { days }), findNews: async () => null };
   }
   const env = process.env;
-  let voicer = null;
-  if (env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION && env.CLOUDINARY_URL) {
-    const { azure, cloudinary } = require('./tts');
-    const voice = env.AZURE_TTS_VOICE || 'te-IN-ShrutiNeural';
-    voicer = createVoicer({ voice, tts: azure({ key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION, voice }), store: cloudinary(env.CLOUDINARY_URL),
-      dailyChars: Number(env.BULLETIN_DAILY_CHARS) || 20000 });
+  // The bulletin's voice: Gemini or Azure speech, with the audio on Cloudinary. `voice` names everything that changes
+  // the sound, so changing any of it voices the current bulletin again.
+  let voicer = null, voiceName = 'off';
+  const hasGemini = !!env.GEMINI_API_KEY, hasAzure = !!(env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION);
+  const provider = env.TTS_PROVIDER || (hasGemini ? 'gemini' : hasAzure ? 'azure' : '');
+  if (env.CLOUDINARY_URL && ((provider === 'gemini' && hasGemini) || (provider === 'azure' && hasAzure))) {
+    const { azure, gemini, cloudinary } = require('./tts');
+    let tts, voice;
+    if (provider === 'gemini') {
+      const o = { key: env.GEMINI_API_KEY, model: env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts', voice: env.GEMINI_TTS_VOICE || 'Kore',
+        style: env.GEMINI_TTS_STYLE || 'Read this Telugu news story aloud like a calm, clear Telugu TV news anchor, with a short pause between the headline and the story:' };
+      tts = gemini(o);
+      voice = `gemini/${o.model}/${o.voice}/${o.style}`;
+      voiceName = `Gemini ${o.model}, ${o.voice}`;
+    } else {
+      voice = env.AZURE_TTS_VOICE || 'te-IN-ShrutiNeural';
+      tts = azure({ key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION, voice });
+      voiceName = `Azure ${voice}`;
+    }
+    voicer = createVoicer({ voice, tts, store: cloudinary(env.CLOUDINARY_URL), dailyChars: Number(env.BULLETIN_DAILY_CHARS) || 20000 });
   }
   const { server, refresh } = createServer({ db, days, deskUrl: env.DESK_APP_URL || '', voicer });
   const every = Math.max(30, Number(process.env.REFRESH_SECONDS) || 120) * 1000;
   // A mistake in content/ stops the start, so Render keeps the previous deploy live
   refresh().then((data) => {
     const from = process.env.MONGODB_URI ? 'MongoDB' : process.env.NEWS_API_URL ? 'the desk app API' : 'content/ only';
-    server.listen(port, () => console.log(`API on port ${port} (${data.articles.length} stories, news from ${from}, bulletin voice ${voicer ? 'on' : 'off'})`));
+    server.listen(port, () => console.log(`API on port ${port} (${data.articles.length} stories, news from ${from}, bulletin voice: ${voiceName})`));
     setInterval(() => refresh().catch((e) => console.error(`Refresh failed: ${e.message}`)), every).unref();
   }, (e) => { console.error(e.message); process.exit(1); });
   process.on('SIGTERM', () => server.close(() => (db && db.close ? db.close() : Promise.resolve()).finally(() => process.exit(0))));
