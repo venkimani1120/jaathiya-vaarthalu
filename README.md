@@ -13,7 +13,7 @@ On `main` the site is **two Node services on Render**:
 browser ──> frontend (pages, /images/ passed through) ──> backend /api/site, /api/news/<id>, /images/ ──> MongoDB + content/
 ```
 
-Each service reads the one behind it every 2 minutes, so an approved story is on the site within about 4 minutes. The static GitHub Pages build (`npm run build`) still works: it renders the frontend's pages from a backend's API into `frontend/dist/`.
+Each service reads the one behind it every 2 minutes, so an approved story is on the site within about 4 minutes. The static build (`npm run build`) still works: it renders the frontend's pages from a backend's API into `frontend/dist/`.
 
 **To add or change content, see [`backend/content/README.md`](backend/content/README.md).**
 
@@ -49,7 +49,7 @@ Every push to `main` redeploys the service whose folder changed: edits to `backe
 | Service | Variable | Meaning |
 |---|---|---|
 | API | `MONGODB_URI` | The desk app's database, with a read-only user. Required on Render. |
-| API | `NEWS_API_URL` | The desk app's public API, used instead when there is no `MONGODB_URI` (the Pages build). |
+| API | `NEWS_API_URL` | The desk app's public API, used instead when there is no `MONGODB_URI`. |
 | API | `DESK_APP_URL` | The desk app's address. E-papers open in its reader at `/e/<link>`. |
 | API | `NEWS_DAYS` | Days of approved news in the lists, search and sitemaps (default 90). Older stories still open by their link. |
 | both | `REFRESH_SECONDS` | How often the database (API) or the API (website) is read again (default 120, at least 30). |
@@ -59,16 +59,8 @@ Every push to `main` redeploys the service whose folder changed: edits to `backe
 ### The API
 All `GET`, JSON, described at the top of `backend/src/server.js`: `/api/site` (everything the pages need: paper details, sections, stories, editions, ads, image list), `/api/news/<id>` (one desk story older than `NEWS_DAYS`), `/images/<path>` (files in `backend/content/images/`) and `/healthz`. It only serves published data, so it can be public.
 
-## Publish on GitHub Pages (static version)
-The static site can still be published on Pages. The workflow starts the backend inside the Actions run (from `backend/content/` and, with the `NEWS_API_URL` repo variable, the desk app's public API) and builds the frontend's pages from it into `frontend/dist/`:
-
-1. **Make Pages available.** Pages needs either a **public** repo or a paid GitHub plan (Pro, Team or Enterprise). E-paper PDFs on GitHub Releases are only readable by the public when the repo is public.
-2. **Turn on Pages.** In the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
-3. **Publish.** Push to `main`. The *Build and publish* workflow tests the site, builds it and publishes it to `https://<user>.github.io/jaathiya-vaarthalu/`. Its first run shows the link.
-4. **Optional custom domain.** In **Settings → Pages → Custom domain**, enter it (e.g. `jaathiyavaarthalu.com`) and add the DNS records GitHub shows, then tick **Enforce HTTPS**. The next build uses the new address automatically.
-5. **Search Console.** Submit `sitemap.xml` and `news-sitemap.xml` in Google Search Console.
-
-The workflow also runs **every hour**. The hourly run publishes stories whose `published_at` time has arrived, and starts and ends ads on their dates. Pull requests only run the tests and the build.
+## Static build (optional)
+`npm run build` still renders every page from a running backend's API into `frontend/dist/` (set `API_URL`, and `SITE_URL` for the address it will be served from). Nothing publishes it automatically: the site is served by the two Render services.
 
 ## What is included
 - **Pages:** home (hero carousel, latest news, one block per section), article, section (20 stories per page), search, e-paper, advertise, subscribe and a 404 page. The build also writes `sitemap.xml`, `news-sitemap.xml`, `rss.xml`, `robots.txt`, Open Graph tags and NewsArticle JSON-LD.
@@ -83,10 +75,9 @@ The workflow also runs **every hour**. The hourly run publishes stories whose `p
 - Replace `frontend/public/logo.png` with the final logo if one is made (and a 1200x630 social image).
 
 ## Known limitations
-- There is no admin panel. Staff edit JSON files on GitHub, and each change goes live after a build of about 2 minutes.
+- There is no admin panel. News is managed in the desk app; staff edit the other content as JSON files on GitHub, and each change goes live after the API redeploys (about 2 to 3 minutes).
 - Enquiries go to WhatsApp and are not stored anywhere. There is no newsletter signup.
-- Scheduled stories and ad dates are applied by the hourly build, so they can be up to an hour late. GitHub may delay scheduled runs at busy times.
+- Scheduled stories and ad dates are applied on the next refreshes, so they can be up to about 4 minutes late (twice `REFRESH_SECONDS`).
 - Without JavaScript, search doesn't work and the enquiry form opens WhatsApp with only its title.
 - The 404 page is in English, because a static page can't tell which language the visitor was using.
 - Only the `inline` ad slot is shown.
-- A GitHub Pages site is limited to 1 GB and about 100 GB of traffic a month. Keep photos small and PDFs on Releases.
