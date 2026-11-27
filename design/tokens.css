@@ -1,30 +1,30 @@
 /* Jaathiya Vaarthalu: design tokens ("royal light" palette: soft lavender, cream and pale-gold tints, violet, gold, crimson)
    Light theme only: there is no dark mode, by design. Text stays dark for readability.
    The site is English by default (Inter + Playfair Display) with a Telugu option (<html lang="te">, Noto Telugu).
-   Self-host WOFF2 files in /public/fonts; avoid Google Fonts at runtime.
+   Self-host WOFF2 files in frontend/public/fonts; avoid Google Fonts at runtime.
    Every text/background pair below meets WCAG AA (4.5:1). --gold is a fill only: use --gold-ink for gold text. */
 
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/Inter-var.woff2") format("woff2");
+  src: url("../fonts/Inter-var.woff2") format("woff2");
   font-weight: 400 800;
   font-display: swap;
 }
 @font-face {
   font-family: "Playfair Display";
-  src: url("/fonts/PlayfairDisplay-var.woff2") format("woff2");
+  src: url("../fonts/PlayfairDisplay-var.woff2") format("woff2");
   font-weight: 400 900;
   font-display: swap;
 }
 @font-face {
   font-family: "Noto Sans Telugu";
-  src: url("/fonts/NotoSansTelugu-var.woff2") format("woff2");
+  src: url("../fonts/NotoSansTelugu-var.woff2") format("woff2");
   font-weight: 400 700;
   font-display: swap;
 }
 @font-face {
   font-family: "Noto Serif Telugu";
-  src: url("/fonts/NotoSerifTelugu-700.woff2") format("woff2");
+  src: url("../fonts/NotoSerifTelugu-700.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
 }

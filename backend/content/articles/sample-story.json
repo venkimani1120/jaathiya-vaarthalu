@@ -1,0 +1,9 @@
+{
+  "title": "నమూనా వార్త: కొత్త వెబ్‌సైట్ ప్రివ్యూ",
+  "summary": "This is a sample story for previewing the site. Delete content/articles/sample-story.json before launch.",
+  "body": "<p>ఇది వెబ్‌సైట్ రూపాన్ని చూడటానికి పెట్టిన నమూనా వార్త. ఇది నిజమైన వార్త కాదు.</p><p>This is a sample story used to preview the website design: the home page carousel, the breaking-news ticker, the section page, the article page and search.</p><h2>ఎలా తీసివేయాలి</h2><p>To remove it, delete the file <code>content/articles/sample-story.json</code>.</p>",
+  "section": "state",
+  "author": "Jaathiya Vaarthalu",
+  "published_at": "2026-10-09 18:00",
+  "breaking": true
+}

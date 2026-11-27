@@ -1,68 +1,92 @@
 # Jaathiya Vaarthalu (జాతియ వార్తలు) website
 
-Telugu daily newspaper site: server-rendered public pages (English UI by default, with a Telugu option), e-paper archive, advertising and print-subscription pages, admin panel. The public design follows newspaperclub.com: hero carousel, icon value rows, card grids, promo bands, newsletter band, multi-column footer.
-Stack: Node 22.13+, Express, SQLite via Node's built-in `node:sqlite`, no native modules and no frontend build step.
+This is the website for a Telugu daily newspaper. It has news pages in English and Telugu, an e-paper archive, and advertising and print-subscription pages. The design follows newspaperclub.com: hero carousel, icon value rows, card grids, promo bands and a multi-column footer.
+
+On this branch (`split-frontend-backend`) the site is **two Node services on Render**:
+
+| Folder | Render service | What it does |
+|---|---|---|
+| `backend/` | `jaathiya-vaarthalu-api` | Owns the data: checks `backend/content/` (sections, ads, paper details, hand-written stories, images) and reads the news approved in the news desk app (`jaathiya-vaartalu-studio-app`) and its published e-papers straight from the desk app's **MongoDB** (photos on Cloudinary). Serves it all as a JSON API. The only npm dependency is the `mongodb` driver. |
+| `frontend/` | `jaathiya-vaarthalu-web` | The public website: renders every page in English and Telugu from the API and serves the CSS, JS, fonts and logo. No npm dependencies and no database access. |
+
+```
+browser ──> frontend (pages, /images/ passed through) ──> backend /api/site, /api/news/<id>, /images/ ──> MongoDB + content/
+```
+
+Each service reads the one behind it every 2 minutes, so an approved story is on the site within about 4 minutes. The static GitHub Pages build (`npm run build`) still works: it renders the frontend's pages from a backend's API into `frontend/dist/`.
+
+**To add or change content, see [`backend/content/README.md`](backend/content/README.md).**
 
 ## Run locally
 ```bash
-npm install
-cp .env.example .env        # set SESSION_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
-npm run seed                # creates the admin user and starter categories
-npm run dev                 # http://localhost:3000  (admin: /admin)
-npm test                    # renders every public page against a test DB
+npm run install:all                        # npm ci in backend/ and frontend/
+cp backend/.env.example backend/.env       # put the read-only MONGODB_URI in it (without it only content/ is shown)
+cp frontend/.env.example frontend/.env     # API_URL=http://localhost:4000
+npm run dev     # backend on http://localhost:4000, website on http://localhost:3000; both restart on every change
+npm test        # backend: content rules and the API (stand-in database); frontend: a sample static build and the web app (stand-in API)
+npm run build   # static build into frontend/dist/ from the API at API_URL (set SITE_URL for the real address)
 ```
-For e-paper thumbnails install poppler: `sudo apt install poppler-utils`.
+Each folder also has its own `npm start`, `npm run dev` and `npm test`; that is what Render runs.
+Needs Node 22 or newer.
+
+## Deploy on Render
+
+The steps below use the same MongoDB Atlas cluster as the desk app. The website only reads from it.
+
+1. **Make a read-only database user.** In MongoDB Atlas, open the desk app's project → **Database Access** → **Add New Database User**. Choose password login, name it `jv-web-reader`, generate a password, and under **Database User Privileges** pick **Specific Privileges** → `read` on the desk app's database (the name after `.mongodb.net/` in the desk app's `MONGODB_URI`, e.g. `jaathiya`). Save it.
+2. **Get the connection string.** In **Database** → **Connect** → **Drivers**, copy the `mongodb+srv://…` string, put in the new user and password, and add the database name before the `?`: `mongodb+srv://jv-web-reader:<password>@cluster0.xxxxx.mongodb.net/jaathiya?retryWrites=true&w=majority`.
+3. **Allow Render to connect.** In **Network Access**, Render must be allowed. If the desk app on Render already connects, its entry (often `0.0.0.0/0`) covers this site too. If not, add the outbound IP addresses Render shows for this service under **Connect → Outbound**.
+4. **Push this branch** to GitHub: `git push -u origin split-frontend-backend`.
+5. **Create both services from the Blueprint.** In the Render dashboard, choose **New → Blueprint**, connect the `jaathiya-vaarthalu` repo and pick the `split-frontend-backend` branch. Render reads `render.yaml`, which has two services, and asks for `MONGODB_URI`. Paste the string from step 2 and click **Apply**.
+   *Without the Blueprint:* make two **New → Web Service**s from the repo and branch, Runtime **Node**, Build command `npm ci && npm test`, Start command `npm start`, Health check path `/healthz`: one with **Root Directory** `backend`, one with `frontend`. Add the environment variables listed for each in `render.yaml`.
+6. **Point the website at the API.** If Render gave the API service a different address than `https://jaathiya-vaarthalu-api.onrender.com` (shown at the top of its page), set the website service's `API_URL` to it.
+7. **Wait for the deploys.** Each build runs its tests. The API is live once its `/healthz` answers `ok`, which needs a successful read of MongoDB; if the connection string is wrong, the deploy fails and the log says `News read failed`. The website is live once it has read the API. Open `https://jaathiya-vaarthalu-web.onrender.com/`; an approved story in the desk app shows up within about 4 minutes.
+8. **Optional custom domain.** In the website service's **Settings → Custom Domains**, add the domain and the DNS records Render shows. Then set its environment variable `SITE_URL` to `https://<the domain>` so canonical links, the sitemap and RSS use it. The API service needs no domain.
+9. **Search Console.** Submit `sitemap.xml` and `news-sitemap.xml` in Google Search Console.
+
+Every push to `split-frontend-backend` redeploys the service whose folder changed: edits to `backend/content/` redeploy only the API (about 2 to 3 minutes). Render's free plan stops a service after 15 minutes without requests. The website's refreshes keep the API awake while the website is awake, but after a quiet spell the next visitor waits a minute or two while both start, and sees a "Starting" page meanwhile. For a public news site, use a paid instance type for both, which stays awake (and then `API_URL` can be the private address `http://jaathiya-vaarthalu-api:10000`).
+
+| Service | Variable | Meaning |
+|---|---|---|
+| API | `MONGODB_URI` | The desk app's database, with a read-only user. Required on Render. |
+| API | `NEWS_API_URL` | The desk app's public API, used instead when there is no `MONGODB_URI` (the Pages build). |
+| API | `DESK_APP_URL` | The desk app's address. E-papers open in its reader at `/e/<link>`. |
+| API | `NEWS_DAYS` | Days of approved news in the lists, search and sitemaps (default 90). Older stories still open by their link. |
+| both | `REFRESH_SECONDS` | How often the database (API) or the API (website) is read again (default 120, at least 30). |
+| website | `API_URL` | The API service's address. Required. |
+| website | `SITE_URL` | The public address. Default: Render's `onrender.com` address. |
+
+### The API
+All `GET`, JSON, described at the top of `backend/src/server.js`: `/api/site` (everything the pages need: paper details, sections, stories, editions, ads, image list), `/api/news/<id>` (one desk story older than `NEWS_DAYS`), `/images/<path>` (files in `backend/content/images/`) and `/healthz`. It only serves published data, so it can be public.
+
+## Publish on GitHub Pages (static version)
+The static site can still be published on Pages. The workflow starts the backend inside the Actions run (from `backend/content/` and, with the `NEWS_API_URL` repo variable, the desk app's public API) and builds the frontend's pages from it into `frontend/dist/`:
+
+1. **Make Pages available.** Pages needs either a **public** repo or a paid GitHub plan (Pro, Team or Enterprise). E-paper PDFs on GitHub Releases are only readable by the public when the repo is public.
+2. **Turn on Pages.** In the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
+3. **Publish.** Push to `main`. The *Build and publish* workflow tests the site, builds it and publishes it to `https://<user>.github.io/jaathiya-vaarthalu/`. Its first run shows the link.
+4. **Optional custom domain.** In **Settings → Pages → Custom domain**, enter it (e.g. `jaathiyavaarthalu.com`) and add the DNS records GitHub shows, then tick **Enforce HTTPS**. The next build uses the new address automatically.
+5. **Search Console.** Submit `sitemap.xml` and `news-sitemap.xml` in Google Search Console.
+
+The workflow also runs **every hour**. The hourly run publishes stories whose `published_at` time has arrived, and starts and ends ads on their dates. Pull requests only run the tests and the build.
 
 ## What is included
-- **Public:** home (hero carousel, card grids), article, category, search (Telugu trigram), e-paper by date, newsletter signup API, sitemap, news sitemap, RSS, robots.txt, Open Graph + NewsArticle JSON-LD.
-- **Language:** English UI by default; the header toggle (`/lang/te`, `/lang/en`) stores a `lang` cookie and shows the UI in Telugu. Article text is shown as written (not machine-translated). Section (category) names follow the toggle: the English name is required, and the Telugu name is optional (if it is missing, the English name is shown).
-- **Advertise (`/advertise`) and Subscribe (`/subscribe`):** ad sizes and subscription plans come from `config/site.json` (set `price` to show a price; `null` shows "Contact us for the price"). Their enquiry forms are stored in the database and listed in the admin **విచారణలు** (Enquiries) tab. Each new enquiry also sends an alert to staff. Set `NOTIFY_PROVIDER` in `.env` (the default `log` only prints the alert to the server console):
-  - `smsgate` (**free SMS**): install the free *SMS Gateway for Android* app (sms-gate.app) on an Android phone with a SIM, switch on its Cloud server, and copy the username and password into `SMSGATE_USER` / `SMSGATE_PASSWORD`. SMS go to `NOTIFY_TO` from that phone's number and use its plan's SMS allowance. The phone must stay on and online.
-  - `telegram` (**free**, no SIM): create a bot with @BotFather, have each staff member press *Start* on it, then set `TELEGRAM_BOT_TOKEN` and their chat ids in `TELEGRAM_CHAT_ID` (open `https://api.telegram.org/bot<token>/getUpdates` after they press Start to see the ids).
-  - `msg91` or `twilio` (paid SMS gateways). For MSG91, create a DLT-approved Flow template, for example `New ##kind## enquiry: ##name##, ##phone##, ##option##, ##place##. Jaathiya Vaartalu`.
-- **WhatsApp group feed:** news posted in your configured WhatsApp groups becomes **draft** articles (never published automatically). The first line of a message is the headline and the rest is the body. A photo sent within 10 minutes before or after the text becomes the story's image. Short chat ("ok", "👍") and old history are skipped. Editors check and publish the drafts as usual, and the admin **వాట్సాప్** tab lists every pulled message and its draft, with a "pull now" button. See *WhatsApp group feed setup* below.
-- **Admin (`/admin`):** articles (create, edit, schedule, publish, unpublish, delete), image upload, e-paper PDF upload with thumbnail, sections (English name + optional Telugu name), ads, enquiries, users and roles, subscribers (+CSV), audit log.
-- **Roles:** admin (everything), editor (articles, e-paper, categories, ads), reporter (own drafts only).
-- **Ops:** `deploy/nginx.conf`, `deploy/pm2.config.js`, `deploy/backup.sh` (nightly SQLite + uploads), `Dockerfile` and `docker-compose.yml` (untested alternative).
-
-## WhatsApp group feed setup
-WhatsApp's official Business API cannot read ordinary group chats, so the feed uses **WAHA** (WhatsApp HTTP API, waha.devlike.pro). It is a free, self-hosted gateway that links to a WhatsApp number the same way WhatsApp Web does.
-
-> **Risk:** WAHA is not an official WhatsApp product, and WhatsApp's terms do not allow automated clients. Use a **separate number** (not the office's main number) that only reads the groups, because WhatsApp can ban numbers it flags.
-
-1. On the server, run WAHA on port 3001 (the site uses 3000), reachable only from the server itself:
-   ```
-   docker run -d --name waha --restart unless-stopped -p 127.0.0.1:3001:3000 \
-     -e WAHA_API_KEY=<long-random-key> -v /srv/waha/sessions:/app/.sessions devlikeapro/waha
-   ```
-   Check the WAHA docs for the current environment variable names.
-2. Open the WAHA dashboard (`http://localhost:3001/dashboard`, e.g. through an SSH tunnel), start the `default` session, and scan its QR code with the separate number (WhatsApp → Linked devices). Add that number to the reporters' group.
-3. To find the group id, call `GET http://localhost:3001/api/default/groups` with the `X-Api-Key` header. The ids end in `@g.us`.
-4. In `.env`, set `WAHA_URL=http://127.0.0.1:3001`, `WAHA_API_KEY`, `WHATSAPP_GROUPS`. Optionally also set `WHATSAPP_SENDERS` (only these reporters' numbers), `WHATSAPP_AUTHOR_EMAIL` (the user the drafts belong to) and `WHATSAPP_POLL_MINUTES`. Then restart the site.
-5. Post a test story in the group, then click **ఇప్పుడే తెచ్చు** (pull now) in the admin **వాట్సాప్** tab.
-
-## Deploy (Ubuntu VPS)
-1. Install Node 22, nginx, sqlite3, poppler-utils; copy the project to `/srv/jaathiya-vaarthalu`; `npm install --omit=dev`.
-2. `cp .env.example .env` and fill it in (`SITE_URL`, `SESSION_SECRET`, admin login); run `npm run seed`.
-3. `pm2 start deploy/pm2.config.js && pm2 save && pm2 startup`.
-4. Copy `deploy/nginx.conf` to `/etc/nginx/sites-available/`, edit the domain, enable it, then `sudo certbot --nginx`.
-5. Add the cron line from `deploy/backup.sh`; set up rclone for off-server copies.
-6. Submit `/sitemap.xml` and `/news-sitemap.xml` in Google Search Console.
+- **Pages:** home (hero carousel, latest news, one block per section), article, section (20 stories per page), search, e-paper, advertise, subscribe and a 404 page. The build also writes `sitemap.xml`, `news-sitemap.xml`, `rss.xml`, `robots.txt`, Open Graph tags and NewsArticle JSON-LD.
+- **Language:** every page is built twice: English at `/` and Telugu under `/te/`. The header toggle opens the same page in the other language, and each page links to its other-language version for Google (`hreflang`). Article text is shown as written. Section names follow the language, and if a section has no Telugu name its English name is used.
+- **Search:** the build writes `search-index.json` (the newest 2,000 stories), and `frontend/public/js/search.js` searches it in the browser. Search needs JavaScript and at least 3 characters.
+- **Advertise and Subscribe:** ad sizes and subscription plans come from `backend/content/site.json`. The enquiry form opens WhatsApp to the paper's `whatsapp` number with the visitor's answers already typed, so staff get enquiries on the phone. There is also a call button.
+- **E-paper:** PDFs live on GitHub Releases and `backend/content/epaper.json` links to them. The page shows the latest edition with older editions listed below.
 
 ## Before launch
-- Add the Telugu font files listed in `public/fonts/README.txt` (Inter for English is included).
-- Fill in the real prices in `config/site.json` (`advertise.sizes[].price`, `subscription.plans[].price`).
-- Replace `public/logo.png` with the final SVG logo if one is made (and a 1200x630 social image).
-- Change the default admin password after first login (Users tab).
+- Add the Telugu font files listed in `frontend/public/fonts/README.txt` (Inter for English is included).
+- Fill in the real prices in `backend/content/site.json` (`advertise.sizes[].price`, `subscription.plans[].price`).
+- Replace `frontend/public/logo.png` with the final logo if one is made (and a 1200x630 social image).
 
 ## Known limitations
-- Sessions are kept in memory, so everyone is logged out when the app restarts.
-- Only the "inline" ad slot is rendered on the public pages.
-- Newsletter signups are collected, but there is no sending feature yet.
-- Pages are sent as `Cache-Control: private` (they vary by the language cookie), so a CDN will not cache them.
-- The admin panel is Telugu only.
-- Not load-tested; the admin routes were syntax-checked but not exercised end to end.
-
-## Troubleshooting
-- `Cannot find module ... bcrypt_lib.node`: fixed by using `bcryptjs` (pure JavaScript, no native build). Delete `node_modules` and `package-lock.json`, then run `npm install` again.
-- The app has no native modules (bcryptjs and node:sqlite are built in or pure JavaScript), so installs work on any Node 22.13+ including the latest.
+- There is no admin panel. Staff edit JSON files on GitHub, and each change goes live after a build of about 2 minutes.
+- Enquiries go to WhatsApp and are not stored anywhere. There is no newsletter signup.
+- Scheduled stories and ad dates are applied by the hourly build, so they can be up to an hour late. GitHub may delay scheduled runs at busy times.
+- Without JavaScript, search doesn't work and the enquiry form opens WhatsApp with only its title.
+- The 404 page is in English, because a static page can't tell which language the visitor was using.
+- Only the `inline` ad slot is shown.
+- A GitHub Pages site is limited to 1 GB and about 100 GB of traffic a month. Keep photos small and PDFs on Releases.

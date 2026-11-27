@@ -1,7 +1,6 @@
 node_modules/
+dist/
+# left over from the server version
 .env
-data/*.db
-data/*.db-*
-uploads/images/*
-uploads/epaper/*
-!.gitkeep
+data/
+uploads/
