@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jaathiya Vaarthalu (జాతియ వార్తలు): website for a Telugu daily newspaper. Public pages are in English by default with a Telugu version under `/te/`. There is an e-paper archive and there are advertising and print-subscription pages. The public design follows newspaperclub.com.
 
-On the `dyna-web-app-render` branch it is **two Node services on Render** (`render.yaml`, one per folder via `rootDir`):
+On the `split-frontend-backend` branch it is **two Node services on Render** (`render.yaml`, one per folder via `rootDir`):
 
 - **`backend/`** (`jaathiya-vaarthalu-api`): owns all data. Checks `backend/content/` (JSON) and reads approved news and published e-papers from the news desk app's **MongoDB** (separate repo `jaathiya-vaartalu-studio-app`; photos on Cloudinary), and serves them as a JSON API. Its only npm dependency is `mongodb`; keep it that way.
 - **`frontend/`** (`jaathiya-vaarthalu-web`): the public website. Renders every page from the backend API and serves `public/`. No npm dependencies and no database access; keep it that way. Browser JS stays plain files under `frontend/public/js/` (no framework, no bundler).
