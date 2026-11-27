@@ -25,6 +25,7 @@ npm run build         # frontend static build into frontend/dist/ from the API a
 - In each folder: `npm start` (what Render runs), `npm run dev`, `npm test`. Env: `render.yaml`, `backend/.env.example`, `frontend/.env.example`.
 - Tests: `backend/tests/content.test.js` (content rules, desk news mapping, `fetchRemote`), `backend/tests/server.test.js` (API with a stand-in db), `frontend/tests/build.test.js` (static build of `tests/fixture.js` API data from a stand-in backend, `SITE_URL=https://example.github.io/jv/`), `frontend/tests/server.test.js` (web app with a stand-in backend).
 - There is no linter and no test framework: plain `node:assert` scripts.
+- `.github/workflows/ci.yml` runs `npm ci && npm test` in `backend/` and `frontend/` as two separate jobs (what Render runs before each deploy) on pushes to `main`, on PRs and by hand. No secrets needed.
 - `.github/workflows/pages.yml` runs both test suites, starts the backend inside the run (content/ plus the desk app's public API from the `NEWS_API_URL` repo variable, skipped on PRs), waits for its `/healthz`, builds the frontend against it with `SITE_URL` from `actions/configure-pages` (`base_url`) and deploys `main` to Pages. It runs on push, on PRs (test + build only), hourly (cron) and by hand.
 
 ## Architecture
