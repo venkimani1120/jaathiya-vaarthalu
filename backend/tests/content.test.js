@@ -35,6 +35,16 @@ assert.throws(() => load(content, now), (e) => /section "nope" is not in categor
   && /"images\/missing.jpg" not found/.test(e.message));
 fs.rmSync(path.join(content, 'articles', 'bad.json'));
 
+// The bulletin presenter: photos must exist; closed and open are needed
+const site = JSON.parse(fs.readFileSync(path.join(content, 'site.json'), 'utf8'));
+fs.mkdirSync(path.join(content, 'images', 'presenter'));
+for (const f of ['closed.jpg', 'open.jpg']) fs.writeFileSync(path.join(content, 'images', 'presenter', f), 'x');
+json('site.json', { ...site, presenter: { name_te: 'రాజేష్', closed: 'images/presenter/closed.jpg', open: 'images/presenter/open.jpg' } });
+assert.strictEqual(load(content, now).site.presenter.open, 'images/presenter/open.jpg');
+json('site.json', { ...site, presenter: { closed: 'images/presenter/closed.jpg', half: 'images/presenter/half.jpg' } });
+assert.throws(() => load(content, now), (e) => /needs "name_en" or "name_te"/.test(e.message) && /"presenter.open" \(a photo\) is required/.test(e.message) && /"images\/presenter\/half.jpg" not found/.test(e.message));
+json('site.json', site);
+
 // News desk app: approved news and published e-papers are added to the content/ ones
 const ID = 'a'.repeat(24), CLD = 'https://res.cloudinary.com/demo/image/upload/v1/jaathiya/news/';
 const remote = {

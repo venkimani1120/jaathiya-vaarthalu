@@ -128,6 +128,17 @@ function load(dir, now = new Date(), remote) {
   });
 
   for (const k of ['name_en', 'name_te', 'phone']) if (!site[k]) errors.push(`site.json: "${k}" is required`);
+  // The news bulletin's presenter (optional): photos of one person in the same pose, which the player switches between
+  // in time with the voice. "closed" and "open" are needed; "half" (mouth half open) and "blink" (eyes shut) are optional.
+  const pr = site.presenter;
+  if (pr != null) {
+    if (typeof pr !== 'object' || Array.isArray(pr)) errors.push('site.json: "presenter" must be an object');
+    else {
+      if (!pr.name_en && !pr.name_te) errors.push('site.json: "presenter" needs "name_en" or "name_te"');
+      for (const k of ['closed', 'open']) if (!pr[k]) errors.push(`site.json: "presenter.${k}" (a photo) is required`);
+      for (const k of ['closed', 'half', 'open', 'blink']) fileOk(`site.json "presenter.${k}"`, pr[k]);
+    }
+  }
 
   if (errors.length) throw new Error(`Content has ${errors.length} problem(s):\n${errors.map((e) => `  - ${e}`).join('\n')}`);
   return { site, cats, articles, editions, ads };

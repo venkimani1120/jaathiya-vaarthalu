@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=content src/server.js",
-    "test": "node tests/content.test.js && node tests/server.test.js"
+    "test": "node tests/content.test.js && node tests/server.test.js && node tests/bulletin.test.js"
   },
   "engines": {
     "node": ">=22"

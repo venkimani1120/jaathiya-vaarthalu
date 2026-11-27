@@ -29,6 +29,21 @@ services:
         value: "90"
       - key: REFRESH_SECONDS
         value: "120"
+      # The news bulletin's voice (optional; off until CLOUDINARY_URL and a speech key are set).
+      # Gemini: Google AI Studio (aistudio.google.com) > Get API key. Cloudinary console > Settings > API Keys: the API
+      # environment variable, cloudinary://<api key>:<api secret>@<cloud name>.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: GEMINI_TTS_MODEL
+        value: gemini-3.8-flash-tts
+      - key: GEMINI_TTS_VOICE
+        value: Kore
+      # Azure speech instead of Gemini: set TTS_PROVIDER=azure, AZURE_SPEECH_KEY, AZURE_SPEECH_REGION (e.g. centralindia)
+      # and optionally AZURE_TTS_VOICE (default te-IN-ShrutiNeural).
+      - key: BULLETIN_DAILY_CHARS
+        value: "20000"
 
   - type: web
     name: jaathiya-vaarthalu-web

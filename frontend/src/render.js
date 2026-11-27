@@ -28,6 +28,10 @@ const ICON = {
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
   layers: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  play: '<path d="M8 5v14l11-7z" fill="currentColor"/>',
+  prev: '<path d="M6 5v14M18 5 9 12l9 7z"/>',
+  next: '<path d="M18 5v14M6 5l9 7-9 7z"/>',
+  cc: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10.5a2 2 0 1 0 0 3M17 10.5a2 2 0 1 0 0 3"/>',
 };
 const icon = (n, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 const values = (l) => `<ul class="values">${l.map(([i, t, d]) => `<li>${icon(i, 'ic ic-lg')}<b>${t}</b><span>${d}</span></li>`).join('')}</ul>`;
@@ -63,6 +67,10 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
   const currentIn = (slug) => inSec(current, slug);
   const edDays = [...new Set(editions.map((x) => x.date))].sort().reverse();
   const brk = current.filter((a) => a.breaking).slice(0, 8);
+  // A day's news bulletin: up to 10 stories, breaking news first, then newest first (backend/src/bulletin.js pick()
+  // voices the same stories; keep the two in step)
+  const BULLETIN_MAX = 10;
+  const bulletinOf = (d) => { const l = byDay.get(d) || []; return [...l.filter((a) => a.breaking), ...l.filter((a) => !a.breaking)].slice(0, BULLETIN_MAX); };
   // WhatsApp needs the number with its country code; a 10-digit Indian mobile gets 91 in front
   const waNum = ((d) => (d.length === 10 ? '91' + d : d))(String(site.whatsapp || site.phone).replace(/\D/g, ''));
 
@@ -98,7 +106,7 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
     // Marks the link for the current page (or, on an article, its section) for the active nav style
     const cur = (p) => (p === o.path || p === o.nav || (o.section && p === catPath(o.section)) ? ' aria-current="page"' : '');
     const catLinks = cats.map((c) => `<a href="${esc(u(catPath(c)))}"${cur(catPath(c))}>${esc(secName(c, 'name', L))}</a>`).join('');
-    const primary = [['/old-news/', T.oldNews], ['/epaper/', T.epaper], ['/advertise/', T.advertise], ['/subscribe/', T.subscribe]].map(([p, t]) => `<a href="${u(p)}"${cur(p)}>${t}</a>`).join('');
+    const primary = [['/epaper/', T.epaper], ['/advertise/', T.advertise], ['/subscribe/', T.subscribe], ['/old-news/', T.oldNews], ['/bulletin/', T.bulletin]].map(([p, t]) => `<a href="${u(p)}"${cur(p)}>${t}</a>`).join('');
     const toggle = `<a class="lang" href="${esc(url(T.switchTo, o.path))}" hreflang="${T.switchTo}" lang="${T.switchTo}" aria-label="${esc(T.switchAria)}">${icon('globe')}${T.switchLabel}</a>`;
     const search = (id) => `<form class="search" action="${u('/search/')}" role="search"><label class="sr" for="${id}">${T.search}</label><input id="${id}" name="q" type="search" minlength="3" placeholder="${T.searchPh}"><button aria-label="${T.search}">${icon('search')}</button></form>`;
     const alt = o.noindex ? '' : LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${esc(absUrl(l, o.path))}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${esc(absUrl('en', o.path))}">`;
@@ -135,7 +143,7 @@ ${brk.length ? `<div class="ticker"><div class="wrap"><b>${T.breaking}</b>${brk.
 <footer class="foot"><div class="wrap foot-grid">
 <div><img class="logo" src="${asset('logo.png')}" alt="${esc(NAME)}" width="120" height="60" loading="lazy"><p><b>${esc(NAME)}</b><br>${esc(tag)}, ${T.established} ${site.established}</p><p>RNI No. ${esc(site.rni_number)}</p></div>
 <div><h3>${T.sections}</h3>${catLinks}</div>
-<div><h3>${T.services}</h3><a href="${u('/old-news/')}">${T.oldNews}</a><a href="${u('/epaper/')}">${T.epaper}</a><a href="${u('/advertise/')}">${T.advertiseWithUs}</a><a href="${u('/subscribe/')}">${T.printSub}</a><a href="${asset('rss.xml')}">RSS</a></div>
+<div><h3>${T.services}</h3><a href="${u('/epaper/')}">${T.epaper}</a><a href="${u('/advertise/')}">${T.advertiseWithUs}</a><a href="${u('/subscribe/')}">${T.printSub}</a><a href="${u('/old-news/')}">${T.oldNews}</a><a href="${u('/bulletin/')}">${T.bulletin}</a><a href="${asset('rss.xml')}">RSS</a></div>
 <div><h3>${T.contact}</h3><p>${T.editorPub}: ${esc(pick(site, 'editor_publisher', L))}</p><p>${esc(pick(site, 'address', L))}</p><p>${T.phone}: <a href="tel:${esc(site.phone)}">${esc(site.phone)}</a></p></div>
 </div><div class="wrap foot-bottom">© ${now.getFullYear()} ${esc(NAME)}. ${T.rights}</div></footer>
 </body></html>`;
@@ -243,6 +251,57 @@ ${edDays.length ? `<h2>${T.epFind}</h2>${dateForm('/epaper/', edDays)}` : ''}
 ${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => `<li><a href="${esc(u(`/epaper/${x.date}/`))}">${esc(fmtDay(x.date))}${x.name ? ` · ${esc(x.name)}` : ''}</a></li>`).join('')}</ul>` : ''}
 </div>` });
   };
+  // The bulletin's presenter (site.json "presenter"): photos of one staff member in the same pose; bulletin.js shows the
+  // one that matches how loud the voice is (mouth closed / half / open) and now and then the eyes-shut one. Labelled as
+  // an AI presenter, because the voice and the movement are made by the computer.
+  const presenter = (L) => {
+    const pr = site.presenter;
+    if (!pr || !pr.closed || !pr.open) return '';
+    const T = STR[L];
+    const frames = ['closed', 'half', 'open', 'blink'].filter((k) => pr[k]);
+    return `<figure class="bl-anchor" data-f="closed" data-frames="${frames.join(' ')}"><span class="an-face">${frames.map((k) => `<img class="f-${k}" src="${esc(asset(pr[k]))}" alt="" width="320" height="320">`).join('')}</span>
+<figcaption><b>${T.aiPresenter}</b> ${esc(pick(pr, 'name', L))}</figcaption></figure>`;
+  };
+
+  // News bulletin: the day's stories in a video-style player (public/js/bulletin.js). Each story is a slide with its
+  // photo and headline; the caption under the player is what the reader says. Without JS the slides are a swipeable
+  // strip and the playlist links to the stories. A story with an `audio` URL is played by the player; until the voice
+  // reader exists, the player moves on after a reading time worked out from the caption.
+  const bulletinPage = (L, d, path) => {
+    const c = ctx(L), { T, u, fmtDay, dateForm, dayPager } = c;
+    const items = bulletinOf(d), n = items.length, title = d === curDay && path === '/bulletin/' ? T.bulletin : T.bulletinOf(fmtDay(d));
+    // The backend's script (what the voice reads, see backend/src/bulletin.js); before that, the summary or opening text
+    const say = (a) => a.script || a.summary || plain(a.body, 280);
+    const thumb = (a, w, h, cls = '') => (a.image ? `<img class="${cls}" src="${esc(asset(a.image))}" alt="" loading="lazy" width="${w}" height="${h}">` : `<span class="ph ${cls}" aria-hidden="true">${icon('news', 'ic')}</span>`);
+    const player = `<div class="player" role="region" aria-roledescription="${esc(T.blPlayer)}" aria-label="${esc(title)}">
+<div class="screen">
+<div class="bl-track" tabindex="0">${items.map((a, i) => { const cat = secName(a.cat, 'name', L); return `<figure class="bl-slide" id="bl-${i + 1}" data-say="${esc(say(a))}"${a.audio ? ` data-audio="${esc(a.audio)}"` : ''} aria-label="${esc(T.storyOf(i + 1, n))}">
+${a.image ? `<img src="${esc(asset(a.image))}" alt="" ${i ? 'loading="lazy" ' : ''}width="960" height="540">` : `<div class="ph" aria-hidden="true">${icon('news', 'ic ic-xl')}</div>`}
+<figcaption class="bl-cap">${cat ? `<span class="kicker">${esc(cat)}</span>` : ''}<h2>${esc(a.title)}</h2><a href="${esc(u(artPath(a)))}">${T.readFull}</a></figcaption></figure>`; }).join('')}</div>
+<span class="bl-bug">${esc(T.bulletin)} · ${esc(fmtDay(d))}</span>${presenter(L)}
+<span class="bl-big-at"><button class="bl-big" hidden aria-label="${esc(T.playBulletin)}">${icon('play', 'ic ic-lg')}</button></span>
+</div>
+<div class="bl-ctl" hidden>
+<div class="bl-bar" role="progressbar" aria-label="${esc(T.blProgress)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+<button class="round bl-prev" aria-label="${esc(T.prevStory)}">${icon('prev')}</button>
+<button class="round bl-play" aria-label="${esc(T.play)}" data-play="${esc(T.play)}" data-pause="${esc(T.pause)}">${icon('play')}</button>
+<button class="round bl-next" aria-label="${esc(T.nextStory)}">${icon('next')}</button>
+<button class="btn ghost bl-speed" aria-label="${esc(T.speed)}">1×</button>
+<button class="btn ghost bl-cc" aria-pressed="true">${icon('cc')}${T.captions}</button>
+<span class="bl-count" aria-live="polite" data-of="${esc(T.storyOf('%i', '%n'))}">${esc(T.storyOf(1, n))}</span>
+</div>
+<p class="bl-say" aria-live="polite" hidden></p>
+<p class="bl-next-up" hidden><b>${T.upNext}:</b> <span></span></p>
+</div>`;
+    const playlist = `<h2>${T.inThisBulletin}</h2><ol class="playlist">${items.map((a, i) => `<li><a href="${esc(u(artPath(a)))}" data-i="${i}"><span class="pl-n">${i + 1}</span>${thumb(a, 96, 54)}<span class="pl-t">${esc(a.title)}</span></a></li>`).join('')}</ol>`;
+    return page(L, { title, path, nav: '/bulletin/', noindex: !n, scripts: n ? ['js/bulletin.js'] : [],
+      body: `<div class="pagehead"><div class="wrap"><h1>${esc(title)}</h1><p>${T.bulletinIntro}</p></div></div>
+<div class="wrap pad">${n ? `<div class="bulletin" data-replay="${esc(T.replay)}">${player}
+${items.some((a) => a.audio) ? '' : `<p class="note">${T.voiceSoon}</p>`}<noscript><p class="note">${T.bulletinNoJs}</p></noscript>
+${playlist}</div>` : `<p>${T.noBulletin}</p>`}
+${dayPager('/bulletin/', newsDays, d)}<h2>${T.pickDate}</h2>${dateForm('/bulletin/', newsDays, d)}</div>` });
+  };
+
   // One date's editions: /epaper/2026-11-27/
   const epaperDay = (L, d) => {
     const c = ctx(L), { T, fmtDay, dateForm, dayPager } = c;
@@ -336,6 +395,8 @@ ${enquiryForm(c, 'subscription', plans, 'plan', T.subEnqH)}` });
     for (const d of edDays) put(L, `/epaper/${d}/`, () => epaperDay(L, d));
     put(L, '/old-news/', () => oldNews(L));
     for (const d of newsDays) put(L, `/old-news/${d}/`, () => oldNewsDay(L, d));
+    put(L, '/bulletin/', () => bulletinPage(L, curDay, '/bulletin/'));
+    for (const d of newsDays) put(L, `/bulletin/${d}/`, () => bulletinPage(L, d, `/bulletin/${d}/`));
     put(L, '/advertise/', () => advertise(L));
     put(L, '/subscribe/', () => subscribe(L));
   }
@@ -350,14 +411,14 @@ ${enquiryForm(c, 'subscription', plans, 'plan', T.subEnqH)}` });
   // ---- SEO feeds (language independent) ----
   const xml = (body) => '<?xml version="1.0" encoding="UTF-8"?>\n' + body;
   out.set('robots.txt', () => `User-agent: *\nAllow: /\nSitemap: ${absAsset('sitemap.xml')}\nSitemap: ${absAsset('news-sitemap.xml')}\n`);
-  const pages = ['/', '/old-news/', '/epaper/', '/advertise/', '/subscribe/', ...cats.map(catPath), ...newsDays.map((d) => `/old-news/${d}/`), ...edDays.map((d) => `/epaper/${d}/`)];
+  const pages = ['/', '/old-news/', '/bulletin/', '/epaper/', '/advertise/', '/subscribe/', ...cats.map(catPath), ...newsDays.map((d) => `/old-news/${d}/`), ...edDays.map((d) => `/epaper/${d}/`)];
   const urls = LANGS.flatMap((L) => [...pages.map((p) => ({ p: absUrl(L, p) })), ...articles.slice(0, 5000).map((a) => ({ p: absUrl(L, artPath(a)), m: a.updated }))]);
   out.set('sitemap.xml', () => xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((x) => `<url><loc>${esc(x.p)}</loc>${x.m ? `<lastmod>${x.m.toISOString()}</lastmod>` : ''}</url>`).join('')}</urlset>`));
   const recent = articles.filter((a) => now - a.date <= 2 * 864e5).slice(0, 1000);
   out.set('news-sitemap.xml', () => xml(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${recent.map((a) => `<url><loc>${esc(absUrl('en', artPath(a)))}</loc><news:news><news:publication><news:name>${esc(site.name_en)}</news:name><news:language>te</news:language></news:publication><news:publication_date>${a.date.toISOString()}</news:publication_date><news:title>${esc(a.title)}</news:title></news:news></url>`).join('')}</urlset>`));
   out.set('rss.xml', () => xml(`<rss version="2.0"><channel><title>${esc(site.name_te)}</title><link>${esc(absUrl('en', '/'))}</link><description>${esc(site.tagline_te)}</description><language>te</language>${articles.slice(0, 30).map((a) => `<item><title>${esc(a.title)}</title><link>${esc(absUrl('en', artPath(a)))}</link><guid>${esc(absUrl('en', artPath(a)))}</guid><pubDate>${a.date.toUTCString()}</pubDate><description>${esc(a.summary)}</description></item>`).join('')}</channel></rss>`));
   // A day page for a date with no news or edition (the server renders these on request; the static build has none)
-  const dayPage = (L, kind, d) => (isDay(d) ? (kind === 'epaper' ? epaperDay(L, d) : oldNewsDay(L, d)) : null);
+  const dayPage = (L, kind, d) => (!isDay(d) ? null : kind === 'epaper' ? epaperDay(L, d) : kind === 'bulletin' ? bulletinPage(L, d, `/bulletin/${d}/`) : oldNewsDay(L, d));
   return { routes: out, article: (L, a) => article(L, a), dayPage, artFile: (L, a) => fileOf((L === 'te' ? '/te' : '') + artPath(a)) };
 }
 

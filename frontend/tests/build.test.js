@@ -29,7 +29,7 @@ const now = new Date('2026-10-10T06:00:00Z'); // 11:30 in India
     assert(homeTe.includes('<html lang="te">') && homeTe.includes('>క్రీడలు<') && !homeTe.includes('>Sports<') && homeTe.includes('href="/jv/"'));
 
     // Every local link and asset carries the sub-path
-    for (const f of ['index.html', 'te/index.html', 'advertise/index.html', 'epaper/index.html', 'epaper/2026-10-09/index.html', 'old-news/index.html', 'old-news/2026-09-05/index.html', 'search/index.html', '404.html']) {
+    for (const f of ['index.html', 'te/index.html', 'advertise/index.html', 'epaper/index.html', 'epaper/2026-10-09/index.html', 'old-news/index.html', 'old-news/2026-09-05/index.html', 'bulletin/index.html', 'te/bulletin/2026-09-05/index.html', 'search/index.html', '404.html']) {
       const bad = [...read(f).matchAll(/(?:href|src|action)="(\/[^"]*)"/g)].map((m) => m[1]).filter((u) => !u.startsWith('/jv/'));
       assert.deepStrictEqual(bad, [], `${f}: links without the /jv base path`);
     }
@@ -59,6 +59,20 @@ const now = new Date('2026-10-10T06:00:00Z'); // 11:30 in India
     assert(day.includes('href="/jv/old-news/2026-09-04/"') && day.includes('href="/jv/old-news/2026-09-06/"'), 'earlier and later day links');
     assert(read('te/old-news/2026-10-01/index.html').includes('Health tip') && read('te/old-news/index.html').includes('పాత వార్తలు'));
     assert(!has('old-news/2026-08-01/index.html'), 'no page for a day without news');
+
+    // News bulletin: the current day's stories in the player (breaking first), a playlist and the date filter
+    const bl = read('bulletin/index.html');
+    assert(bl.includes('<h1>News Bulletin</h1>') && bl.includes('src="/jv/js/bulletin.js"') && bl.includes('aria-current="page">News Bulletin<'));
+    assert(bl.indexOf('భారత్ ఘన విజయం</h2>') < bl.indexOf('కొత్త రోడ్డు &lt;b&gt;</h2>') && !bl.includes('Old 1<'), "today's stories, breaking first");
+    assert(bl.includes('data-say="సారాంశం"') && bl.includes('class="playlist"') && bl.includes('data-i="1"') && bl.includes('action="/jv/bulletin/"'));
+    assert(bl.includes('data-say="కొత్త రోడ్డు. రూ.45 లక్షలు. ప్రారంభం. పేరా" data-audio="https://res.cloudinary.com/demo/video/upload/v1/jaathiya/bulletin/abc.mp3"'), "the backend's script and audio");
+    assert(!bl.includes('voice reader is coming soon') && read('bulletin/2026-09-05/index.html').includes('voice reader is coming soon'), 'the note only where nothing is voiced');
+    const blTe = read('te/bulletin/2026-09-05/index.html');
+    assert(blTe.includes('వార్తా బులెటిన్: ') && blTe.includes('Old 5</h2>') && blTe.includes('href="/jv/te/article/old-5/"') && blTe.includes('href="/jv/te/bulletin/2026-09-04/"'));
+    assert(home.includes('href="/jv/bulletin/"'), 'menu link');
+    // The presenter: its photos (no half-open one here) and the AI label, in each language
+    assert(bl.includes('data-frames="closed open blink"') && bl.includes('class="f-open" src="/jv/images/presenter/open.jpg"') && !bl.includes('f-half'));
+    assert(bl.includes('<b>AI presenter</b> Rajesh') && blTe.includes('<b>AI వ్యాఖ్యాత</b> రాజేష్'));
 
     // Search index
     const idx = JSON.parse(read('search-index.json'));

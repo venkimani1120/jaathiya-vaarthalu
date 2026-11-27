@@ -11,6 +11,7 @@ const SITE = {
     { key: 'full', name_en: 'Full page', name_te: 'పూర్తి పేజీ', desc_en: 'The whole page.', desc_te: 'పేజీ మొత్తం.', w: 100, h: 100, price: null },
     { key: 'half', name_en: 'Half page', name_te: 'అర పేజీ', desc_en: 'The bottom half.', desc_te: 'కింది సగం.', w: 100, h: 50, price: null },
   ] },
+  presenter: { name_en: 'Rajesh', name_te: 'రాజేష్', closed: 'images/presenter/closed.jpg', open: 'images/presenter/open.jpg', blink: 'images/presenter/blink.jpg' },
   subscription: { plans: [{ key: 'month', name_en: 'Monthly', name_te: 'నెలవారీ', desc_en: 'One month.', desc_te: 'ఒక నెల.', price: null }] },
 };
 
@@ -19,7 +20,8 @@ const story = (slug, title, date, o = {}) => ({ slug, title, summary: '', body: 
 function apiData() {
   const articles = [
     story('భారత్-ఘన-విజయం', 'భారత్ ఘన విజయం', '2026-10-10T03:30:00.000Z', { summary: 'సారాంశం', body: '<p>మొదటి పేరా</p>', author: 'రాజేష్', breaking: true, image: 'images/win.jpg' }),
-    story(ID, 'కొత్త రోడ్డు <b>', '2026-10-10T03:00:00.000Z', { summary: 'రూ.45 లక్షలు · ప్రారంభం', body: '<p>పేరా</p>', image: 'https://res.cloudinary.com/demo/image/upload/c_limit,w_1280,f_auto,q_auto/v1/a.jpg' }),
+    story(ID, 'కొత్త రోడ్డు <b>', '2026-10-10T03:00:00.000Z', { summary: 'రూ.45 లక్షలు · ప్రారంభం', body: '<p>పేరా</p>', image: 'https://res.cloudinary.com/demo/image/upload/c_limit,w_1280,f_auto,q_auto/v1/a.jpg',
+      script: 'కొత్త రోడ్డు. రూ.45 లక్షలు. ప్రారంభం. పేరా', audio: 'https://res.cloudinary.com/demo/video/upload/v1/jaathiya/bulletin/abc.mp3' }),
     story('health-tip', 'Health tip', '2026-10-01T02:30:00.000Z', { body: '<p>x</p>', section: 'health' }),
   ];
   for (let i = 21; i >= 1; i--) articles.push(story(`old-${i}`, `Old ${i}`, `2026-09-${String(i).padStart(2, '0')}T02:30:00.000Z`));
