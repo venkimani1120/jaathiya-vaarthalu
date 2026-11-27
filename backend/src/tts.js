@@ -36,7 +36,14 @@ function gemini({ key, model = 'gemini-3.8-flash-tts', voice = 'Kore', style = '
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!r.ok) throw Object.assign(new Error(`Gemini speech: HTTP ${r.status} ${(await r.text()).slice(0, 200)}`), { status: r.status });
+    if (!r.ok) {
+      // A 429 says when to try again (e.g. "60091s" once the free tier's daily requests are used up)
+      const t = await r.text();
+      let wait = 0;
+      try { wait = 1000 * parseFloat((JSON.parse(t).error.details || []).find((d) => d.retryDelay).retryDelay); } catch {}
+      const quota = (/"quotaId":\s*"([^"]+)"/.exec(t) || [])[1];
+      throw Object.assign(new Error(`Gemini speech: HTTP ${r.status}${quota ? ` (${quota})` : ` ${t.slice(0, 200)}`}`), { status: r.status, retryAfterMs: wait || 0 });
+    }
     const j = await r.json();
     const audio = ((j.candidates || [])[0]?.content?.parts || []).find((p) => p.inlineData && /^audio\//.test(p.inlineData.mimeType));
     if (!audio) throw new Error(`Gemini speech: no audio in the answer (${JSON.stringify(j).slice(0, 200)})`);

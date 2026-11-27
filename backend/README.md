@@ -32,6 +32,7 @@ Needs Node 22 or newer. From the repo root, `npm run dev` starts this and the we
 | `GEMINI_TTS_VOICE` | One of Gemini's voices (default `Kore`). |
 | `GEMINI_TTS_STYLE` | The reading instruction put in front of each script (default: read like a calm, clear Telugu TV news anchor). |
 | `TTS_PROVIDER` | `gemini` (default) or `azure`. |
+| `BULLETIN_VOICE` | `off` turns voicing off even when the keys are set. Use it in a local `.env`: it shares the live site's daily quota. |
 | `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_TTS_VOICE` | Azure speech instead of Gemini: a Speech resource's key and region (e.g. `centralindia`), and the voice (default `te-IN-ShrutiNeural`). |
 
 Changing the speech service, model, voice or style voices the current day's bulletin again.

@@ -49,6 +49,7 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
   let known = null;        // name → URL of the files already made
   let running = null;
   let spent = { day: '', chars: 0 };
+  let pausedUntil = 0;       // after a rate limit, no speech requests until then
   const waiting = new Map(); // name → audio made but not yet uploaded (so a failed upload doesn't pay for speech again)
 
   // Every bulletin story (any day) → { script, audio }; audio is '' until its file exists
@@ -64,6 +65,7 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
 
   // Voices the current day's stories that have no file yet. Resolves to the number of new files.
   async function voiceDay(articles) {
+    if (Date.now() < pausedUntil) return 0;
     if (!known) known = await store.list(); // if the list fails, nothing is voiced (so nothing is paid for twice)
     const day = articles.length ? istDay(articles[0].date) : '';
     const today = istDay(new Date());
@@ -85,6 +87,10 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
       } catch (e) {
         log.error(`Bulletin: story ${a.slug} not voiced: ${e.message}`);
         // rate limited (429), or storage refused (401/403): the rest waits for the next refresh
+        if (e.status === 429) {
+          pausedUntil = Date.now() + Math.max(60000, e.retryAfterMs || 0);
+          log.error(`Bulletin: speech rate limit; voicing again after ${new Date(pausedUntil).toISOString()}`);
+        }
         if ([401, 403, 429].includes(e.status)) break;
       }
     }

@@ -27,6 +27,7 @@
 //                    GEMINI_TTS_VOICE (default Kore), GEMINI_TTS_STYLE (the reading instruction)
 //   AZURE_SPEECH_KEY, AZURE_SPEECH_REGION  Azure speech instead; AZURE_TTS_VOICE (default te-IN-ShrutiNeural)
 //   TTS_PROVIDER     gemini or azure, when keys for both are set (default gemini)
+//   BULLETIN_VOICE   off: no voicing even with keys (for local development, which would spend the same daily quota)
 //   BULLETIN_DAILY_CHARS  most characters voiced a day (default 20000), a spending limit
 // Without MONGODB_URI and NEWS_API_URL only content/ is served.
 const http = require('http');
@@ -138,7 +139,7 @@ if (require.main === module) {
   let voicer = null, voiceName = 'off';
   const hasGemini = !!env.GEMINI_API_KEY, hasAzure = !!(env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION);
   const provider = env.TTS_PROVIDER || (hasGemini ? 'gemini' : hasAzure ? 'azure' : '');
-  if (env.CLOUDINARY_URL && ((provider === 'gemini' && hasGemini) || (provider === 'azure' && hasAzure))) {
+  if (env.BULLETIN_VOICE !== 'off' && env.CLOUDINARY_URL && ((provider === 'gemini' && hasGemini) || (provider === 'azure' && hasAzure))) {
     const { azure, gemini, cloudinary } = require('./tts');
     let tts, voice;
     if (provider === 'gemini') {

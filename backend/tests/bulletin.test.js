@@ -51,6 +51,7 @@ const quiet = { error() {} };
   let tries = 0;
   const limited = createVoicer({ tts: async () => { tries++; throw Object.assign(new Error('429'), { status: 429 }); }, store: { list: async () => new Map(), upload: async (n) => n }, voice: 'v', log: quiet });
   assert(await limited.run(day) === 0 && tries === 1, 'one try, then wait');
+  assert(await limited.run(day) === 0 && tries === 1, 'no new requests while paused');
   // A refused upload stops the run and keeps the audio, so the next run uploads it without asking for speech again
   let spoken = 0, refuse = true;
   const keep = createVoicer({ tts: async () => { spoken++; return Buffer.from('mp3'); }, voice: 'v', log: quiet,
@@ -73,7 +74,7 @@ const quiet = { error() {} };
     }
     if (String(url).includes('generativelanguage.googleapis.com')) {
       const body = JSON.parse(o.body);
-      if (body.contents[0].parts[0].text.includes('LIMIT')) return new Response('quota', { status: 429 });
+      if (body.contents[0].parts[0].text.includes('LIMIT')) return Response.json({ error: { code: 429, details: [{ violations: [{ quotaId: 'PerDay-FreeTier' }] }, { retryDelay: '60091s' }] } }, { status: 429 });
       const data = body.contents[0].parts[0].text.includes('RIFF') ? Buffer.from('RIFFxxxxWAVEdata') : Buffer.from([1, 0, 2, 0, 3, 0, 4, 0]);
       return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: data.toString('base64') } }] } }] });
     }
@@ -110,7 +111,7 @@ const quiet = { error() {} };
     assert(gb.generationConfig.speechConfig.languageCode === 'te-IN' && gb.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName === 'Kore');
     assert(out.subarray(0, 4).toString() === 'RIFF' && out.readUInt32LE(24) === 24000 && out.readUInt32LE(40) === 8 && out.length === 52, 'PCM → WAV, 24 kHz');
     assert.strictEqual((await g(['RIFF'])).toString(), 'RIFFxxxxWAVEdata', 'WAV passes through');
-    await assert.rejects(g(['LIMIT']), (e) => e.status === 429);
+    await assert.rejects(g(['LIMIT']), (e) => e.status === 429 && e.retryAfterMs === 60091000 && /PerDay-FreeTier/.test(e.message));
     // WAV goes up as WAV and is delivered as MP3
     const wurl = await cl.upload('ddd', wav(Buffer.alloc(8), 24000));
     assert(calls.at(-1).o.body.get('file').type === 'audio/wav' && wurl.endsWith('/jaathiya/bulletin/ddd.mp3'));
