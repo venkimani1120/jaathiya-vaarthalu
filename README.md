@@ -13,9 +13,13 @@ On `main` the site is **two Node services on Render**:
 browser ──> frontend (pages, /images/ passed through) ──> backend /api/site, /api/news/<id>, /images/ ──> MongoDB + content/
 ```
 
-Each service reads the one behind it every 2 minutes, so an approved story is on the site within about 4 minutes. The static build (`npm run build`) still works: it renders the frontend's pages from a backend's API into `frontend/dist/`.
+Each service reads the one behind it every 2 minutes, so an approved story is on the site within about 4 minutes.
 
-**To add or change content, see [`backend/content/README.md`](backend/content/README.md).**
+Each service has its own README with its settings, code layout and details:
+
+- [`backend/README.md`](backend/README.md): the API, its environment variables and the news sources.
+- [`frontend/README.md`](frontend/README.md): the pages (including today's news, old news and the e-paper date filter), the code and the static build.
+- [`backend/content/README.md`](backend/content/README.md): **the staff guide for adding or changing content.**
 
 ## Run locally
 ```bash
@@ -24,9 +28,9 @@ cp backend/.env.example backend/.env       # put the read-only MONGODB_URI in it
 cp frontend/.env.example frontend/.env     # API_URL=http://localhost:4000
 npm run dev     # backend on http://localhost:4000, website on http://localhost:3000; both restart on every change
 npm test        # backend: content rules and the API (stand-in database); frontend: a sample static build and the web app (stand-in API)
-npm run build   # static build into frontend/dist/ from the API at API_URL (set SITE_URL for the real address)
+npm run build   # optional static build into frontend/dist/ from the API at API_URL (set SITE_URL for the real address)
 ```
-Each folder also has its own `npm start`, `npm run dev` and `npm test`; that is what Render runs.
+Each folder also has its own `npm start`, `npm run dev` and `npm test`; that is what Render runs (see the folder's README).
 Needs Node 22 or newer.
 
 ## Deploy on Render
@@ -46,29 +50,7 @@ The steps below use the same MongoDB Atlas cluster as the desk app. The website 
 
 Every push to `main` redeploys the service whose folder changed: edits to `backend/content/` redeploy only the API (about 2 to 3 minutes). Render's free plan stops a service after 15 minutes without requests. The website's refreshes keep the API awake while the website is awake, but after a quiet spell the next visitor waits a minute or two while both start, and sees a "Starting" page meanwhile. For a public news site, use a paid instance type for both, which stays awake (and then `API_URL` can be the private address `http://jaathiya-vaarthalu-api:10000`).
 
-| Service | Variable | Meaning |
-|---|---|---|
-| API | `MONGODB_URI` | The desk app's database, with a read-only user. Required on Render. |
-| API | `NEWS_API_URL` | The desk app's public API, used instead when there is no `MONGODB_URI`. |
-| API | `DESK_APP_URL` | The desk app's address. E-papers open in its reader at `/e/<link>`. |
-| API | `NEWS_DAYS` | Days of approved news in the lists, search and sitemaps (default 90). Older stories still open by their link. |
-| both | `REFRESH_SECONDS` | How often the database (API) or the API (website) is read again (default 120, at least 30). |
-| website | `API_URL` | The API service's address. Required. |
-| website | `SITE_URL` | The public address. Default: Render's `onrender.com` address. |
-
-### The API
-All `GET`, JSON, described at the top of `backend/src/server.js`: `/api/site` (everything the pages need: paper details, sections, stories, editions, ads, image list), `/api/news/<id>` (one desk story older than `NEWS_DAYS`), `/images/<path>` (files in `backend/content/images/`) and `/healthz`. It only serves published data, so it can be public.
-
-## Static build (optional)
-`npm run build` still renders every page from a running backend's API into `frontend/dist/` (set `API_URL`, and `SITE_URL` for the address it will be served from). Nothing publishes it automatically: the site is served by the two Render services.
-
-## What is included
-- **Pages:** home (hero carousel, the day's news, one block per section), article, section (20 stories per page), old news, search, e-paper, advertise, subscribe and a 404 page. The build also writes `sitemap.xml`, `news-sitemap.xml`, `rss.xml`, `robots.txt`, Open Graph tags and NewsArticle JSON-LD.
-- **Language:** every page is built twice: English at `/` and Telugu under `/te/`. The header toggle opens the same page in the other language, and each page links to its other-language version for Google (`hreflang`). Article text is shown as written. Section names follow the language, and if a section has no Telugu name its English name is used.
-- **Search:** the build writes `search-index.json` (the newest 2,000 stories), and `frontend/public/js/search.js` searches it in the browser. Search needs JavaScript and at least 3 characters.
-- **Advertise and Subscribe:** ad sizes and subscription plans come from `backend/content/site.json`. The enquiry form opens WhatsApp to the paper's `whatsapp` number with the visitor's answers already typed, so staff get enquiries on the phone. There is also a call button.
-- **E-paper:** PDFs live on GitHub Releases and `backend/content/epaper.json` links to them. The page shows the latest edition with older editions listed below, and a date filter that opens `/epaper/<date>/`.
-- **Today's news and old news:** the home and section pages show only today's news (India time). Until something is published today they show the latest day that has news, with a note saying so. **Old news** (`/old-news/`) lists the earlier days and has a date filter; each day is at `/old-news/<date>/`, with links to the earlier and later day. It covers the last `NEWS_DAYS` days (90).
+The environment variables for each service are listed in [`backend/README.md`](backend/README.md#environment) and [`frontend/README.md`](frontend/README.md#environment), and set in `render.yaml`.
 
 ## Before launch
 - Add the Telugu font files listed in `frontend/public/fonts/README.txt` (Inter for English is included).

@@ -16,7 +16,7 @@
 // Environment (see render.yaml):
 //   PORT             set by Render (default 4000)
 //   MONGODB_URI      the desk app's database, ideally a read-only user
-//   NEWS_API_URL     the desk app's public API, used only when MONGODB_URI is not set (the GitHub Pages build)
+//   NEWS_API_URL     the desk app's public API, used only when MONGODB_URI is not set (e.g. for a static build)
 //   DESK_APP_URL     the desk app's address, for e-paper reader links (<app>/e/<link>)
 //   NEWS_DAYS        days of approved news in /api/site (default 90); older stories still open via /api/news/<id>
 //   REFRESH_SECONDS  how often the news source is read again (default 120)

@@ -2,7 +2,7 @@
 // them in MongoDB with photos on Cloudinary). server.js calls fetchRemote() when NEWS_API_URL is set and MONGODB_URI is not, and content.js
 // turns the result into stories and editions next to the ones in content/.
 // Render's free plan sleeps when idle, so the first request can take about a minute while the server wakes up.
-// If the desk app can't be reached, /healthz stays 503, so the GitHub Pages build fails and the live site stays as it was.
+// If the desk app can't be reached, /healthz stays 503, so a deploy that depends on it (a static build) fails instead of publishing without the news.
 
 const TIMEOUT_MS = 120000;
 const TRIES = 3;
