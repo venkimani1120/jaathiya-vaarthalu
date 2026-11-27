@@ -164,6 +164,11 @@ button:active,.btn:active{transform:none;filter:brightness(.95)}
 .pager{display:flex;justify-content:space-between;margin:1.6rem 0 0}
 .archive{list-style:none;padding:0;margin:.6rem 0 0;display:grid;gap:.2rem;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
 .archive a{display:block;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.date-form{max-width:26rem;margin:.6rem 0 1.6rem}
+.date-form label{display:block;font-weight:600;margin-bottom:.3rem}
+.date-row{display:flex;gap:.5rem}
+.date-row input{flex:1;min-width:0;min-height:44px;font:inherit;padding:.45rem .8rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);color:var(--ink)}
+.note{background:var(--band);border-radius:var(--radius);padding:.7rem 1rem;margin:1rem 0 0}
 .wa-form button{display:inline-flex;align-items:center;gap:.4rem}
 .paper-card img{aspect-ratio:auto}
 

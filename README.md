@@ -63,11 +63,12 @@ All `GET`, JSON, described at the top of `backend/src/server.js`: `/api/site` (e
 `npm run build` still renders every page from a running backend's API into `frontend/dist/` (set `API_URL`, and `SITE_URL` for the address it will be served from). Nothing publishes it automatically: the site is served by the two Render services.
 
 ## What is included
-- **Pages:** home (hero carousel, latest news, one block per section), article, section (20 stories per page), search, e-paper, advertise, subscribe and a 404 page. The build also writes `sitemap.xml`, `news-sitemap.xml`, `rss.xml`, `robots.txt`, Open Graph tags and NewsArticle JSON-LD.
+- **Pages:** home (hero carousel, the day's news, one block per section), article, section (20 stories per page), old news, search, e-paper, advertise, subscribe and a 404 page. The build also writes `sitemap.xml`, `news-sitemap.xml`, `rss.xml`, `robots.txt`, Open Graph tags and NewsArticle JSON-LD.
 - **Language:** every page is built twice: English at `/` and Telugu under `/te/`. The header toggle opens the same page in the other language, and each page links to its other-language version for Google (`hreflang`). Article text is shown as written. Section names follow the language, and if a section has no Telugu name its English name is used.
 - **Search:** the build writes `search-index.json` (the newest 2,000 stories), and `frontend/public/js/search.js` searches it in the browser. Search needs JavaScript and at least 3 characters.
 - **Advertise and Subscribe:** ad sizes and subscription plans come from `backend/content/site.json`. The enquiry form opens WhatsApp to the paper's `whatsapp` number with the visitor's answers already typed, so staff get enquiries on the phone. There is also a call button.
-- **E-paper:** PDFs live on GitHub Releases and `backend/content/epaper.json` links to them. The page shows the latest edition with older editions listed below.
+- **E-paper:** PDFs live on GitHub Releases and `backend/content/epaper.json` links to them. The page shows the latest edition with older editions listed below, and a date filter that opens `/epaper/<date>/`.
+- **Today's news and old news:** the home and section pages show only today's news (India time). Until something is published today they show the latest day that has news, with a note saying so. **Old news** (`/old-news/`) lists the earlier days and has a date filter; each day is at `/old-news/<date>/`, with links to the earlier and later day. It covers the last `NEWS_DAYS` days (90).
 
 ## Before launch
 - Add the Telugu font files listed in `frontend/public/fonts/README.txt` (Inter for English is included).
