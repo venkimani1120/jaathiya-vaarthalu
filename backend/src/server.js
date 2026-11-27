@@ -152,7 +152,11 @@ if (require.main === module) {
       tts = azure({ key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION, voice });
       voiceName = `Azure ${voice}`;
     }
-    voicer = createVoicer({ voice, tts, store: cloudinary(env.CLOUDINARY_URL), dailyChars: Number(env.BULLETIN_DAILY_CHARS) || 20000 });
+    // A wrong CLOUDINARY_URL turns the voice off; it never stops the API
+    try { voicer = createVoicer({ voice, tts, store: cloudinary(env.CLOUDINARY_URL), dailyChars: Number(env.BULLETIN_DAILY_CHARS) || 20000 }); } catch (e) {
+      console.error(`Bulletin voice off: ${e.message}`);
+      voiceName = 'off (CLOUDINARY_URL)';
+    }
   }
   const { server, refresh } = createServer({ db, days, deskUrl: env.DESK_APP_URL || '', voicer });
   const every = Math.max(30, Number(process.env.REFRESH_SECONDS) || 120) * 1000;

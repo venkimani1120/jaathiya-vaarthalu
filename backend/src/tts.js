@@ -61,9 +61,11 @@ function wav(pcm, rate, channels = 1, bits = 16) {
 // Cloudinary, from CLOUDINARY_URL (cloudinary://<api key>:<api secret>@<cloud name>). Audio files are Cloudinary
 // "video" resources; they are kept under `folder`, named after their script's hash.
 function cloudinary(cloudinaryUrl, folder = 'jaathiya/bulletin', { timeoutMs = 60000 } = {}) {
-  const u = new URL(cloudinaryUrl);
+  const bad = () => new Error('CLOUDINARY_URL must look like cloudinary://<api key>:<api secret>@<cloud name> (Cloudinary console > Settings > API Keys > API environment variable)');
+  let u;
+  try { u = new URL(String(cloudinaryUrl).trim()); } catch { throw bad(); }
   const key = decodeURIComponent(u.username), secret = decodeURIComponent(u.password), cloud = u.hostname;
-  if (u.protocol !== 'cloudinary:' || !key || !secret || !cloud) throw new Error('CLOUDINARY_URL must look like cloudinary://<api key>:<api secret>@<cloud name>');
+  if (u.protocol !== 'cloudinary:' || !key || !secret || !cloud) throw bad();
   const api = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloud)}`;
   const prefix = folder.replace(/\/+$/, '') + '/';
   // Gemini's WAV files are kept as they are and delivered as MP3 (Cloudinary converts when the extension asks for it),
