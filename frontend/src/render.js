@@ -251,6 +251,18 @@ ${edDays.length ? `<h2>${T.epFind}</h2>${dateForm('/epaper/', edDays)}` : ''}
 ${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => `<li><a href="${esc(u(`/epaper/${x.date}/`))}">${esc(fmtDay(x.date))}${x.name ? ` · ${esc(x.name)}` : ''}</a></li>`).join('')}</ul>` : ''}
 </div>` });
   };
+  // The bulletin's presenter (site.json "presenter"): photos of one staff member in the same pose; bulletin.js shows the
+  // one that matches how loud the voice is (mouth closed / half / open) and now and then the eyes-shut one. Labelled as
+  // an AI presenter, because the voice and the movement are made by the computer.
+  const presenter = (L) => {
+    const pr = site.presenter;
+    if (!pr || !pr.closed || !pr.open) return '';
+    const T = STR[L];
+    const frames = ['closed', 'half', 'open', 'blink'].filter((k) => pr[k]);
+    return `<figure class="bl-anchor" data-f="closed" data-frames="${frames.join(' ')}"><span class="an-face">${frames.map((k) => `<img class="f-${k}" src="${esc(asset(pr[k]))}" alt="" width="320" height="320">`).join('')}</span>
+<figcaption><b>${T.aiPresenter}</b> ${esc(pick(pr, 'name', L))}</figcaption></figure>`;
+  };
+
   // News bulletin: the day's stories in a video-style player (public/js/bulletin.js). Each story is a slide with its
   // photo and headline; the caption under the player is what the reader says. Without JS the slides are a swipeable
   // strip and the playlist links to the stories. A story with an `audio` URL is played by the player; until the voice
@@ -266,7 +278,7 @@ ${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => 
 <div class="bl-track" tabindex="0">${items.map((a, i) => { const cat = secName(a.cat, 'name', L); return `<figure class="bl-slide" id="bl-${i + 1}" data-say="${esc(say(a))}"${a.audio ? ` data-audio="${esc(a.audio)}"` : ''} aria-label="${esc(T.storyOf(i + 1, n))}">
 ${a.image ? `<img src="${esc(asset(a.image))}" alt="" ${i ? 'loading="lazy" ' : ''}width="960" height="540">` : `<div class="ph" aria-hidden="true">${icon('news', 'ic ic-xl')}</div>`}
 <figcaption class="bl-cap">${cat ? `<span class="kicker">${esc(cat)}</span>` : ''}<h2>${esc(a.title)}</h2><a href="${esc(u(artPath(a)))}">${T.readFull}</a></figcaption></figure>`; }).join('')}</div>
-<span class="bl-bug">${esc(T.bulletin)} · ${esc(fmtDay(d))}</span>
+<span class="bl-bug">${esc(T.bulletin)} · ${esc(fmtDay(d))}</span>${presenter(L)}
 <span class="bl-big-at"><button class="bl-big" hidden aria-label="${esc(T.playBulletin)}">${icon('play', 'ic ic-lg')}</button></span>
 </div>
 <div class="bl-ctl" hidden>

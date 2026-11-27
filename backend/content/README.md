@@ -80,3 +80,35 @@ Each section has a `slug` (its web address: lowercase letters, numbers and dashe
 ## Paper details: `site.json`
 
 This file holds the newspaper's name, tagline, editor, RNI number, address, phone and `whatsapp` number, where advertising and subscription enquiries are sent. It also holds the ad sizes and subscription plans with their prices. A `price` of `null` shows "Contact us for the price".
+
+### The news bulletin presenter: `presenter` in `site.json`
+
+The News Bulletin player can show a staff member as its presenter. Their photo appears in the corner of the player, and while the AI voice reads the news, the website switches between photos of them with the mouth closed, half open and open, so they seem to speak. It's labelled **AI presenter / AI వ్యాఖ్యాత**, because the voice and the movement are made by the computer.
+
+**Get written consent first.** The person must agree in writing to their face being used this way, and can withdraw. To remove the presenter, delete the `presenter` block.
+
+**Take the photos.** Put the phone on a stand and keep the person, the light and the background exactly the same for every photo, so only the mouth moves:
+
+| Photo | Mouth | Eyes | Needed |
+|---|---|---|---|
+| `closed.jpg` | closed | open | yes |
+| `half.jpg` | half open, as in the middle of a word | open | recommended |
+| `open.jpg` | open, as when saying "ఆ" | open | yes |
+| `blink.jpg` | closed | shut | optional (for blinking) |
+
+Use a plain light background and face the camera, head and shoulders only. Crop every photo to the same square (e.g. 600 × 600 pixels) with the face in the middle. They show as a circle.
+
+**Add them.** Put the photos in `images/presenter/` and add this to `site.json`, at the same level as `"phone"`:
+
+```json
+"presenter": {
+  "name_te": "రాజేష్",
+  "name_en": "Rajesh",
+  "closed": "images/presenter/closed.jpg",
+  "half": "images/presenter/half.jpg",
+  "open": "images/presenter/open.jpg",
+  "blink": "images/presenter/blink.jpg"
+}
+```
+
+Leave out `half` or `blink` if you don't have them. A missing photo or name stops the deploy with a message saying which.

@@ -70,6 +70,9 @@ const now = new Date('2026-10-10T06:00:00Z'); // 11:30 in India
     const blTe = read('te/bulletin/2026-09-05/index.html');
     assert(blTe.includes('వార్తా బులెటిన్: ') && blTe.includes('Old 5</h2>') && blTe.includes('href="/jv/te/article/old-5/"') && blTe.includes('href="/jv/te/bulletin/2026-09-04/"'));
     assert(home.includes('href="/jv/bulletin/"'), 'menu link');
+    // The presenter: its photos (no half-open one here) and the AI label, in each language
+    assert(bl.includes('data-frames="closed open blink"') && bl.includes('class="f-open" src="/jv/images/presenter/open.jpg"') && !bl.includes('f-half'));
+    assert(bl.includes('<b>AI presenter</b> Rajesh') && blTe.includes('<b>AI వ్యాఖ్యాత</b> రాజేష్'));
 
     // Search index
     const idx = JSON.parse(read('search-index.json'));

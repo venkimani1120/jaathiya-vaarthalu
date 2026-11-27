@@ -11,6 +11,7 @@ const SITE = {
     { key: 'full', name_en: 'Full page', name_te: 'పూర్తి పేజీ', desc_en: 'The whole page.', desc_te: 'పేజీ మొత్తం.', w: 100, h: 100, price: null },
     { key: 'half', name_en: 'Half page', name_te: 'అర పేజీ', desc_en: 'The bottom half.', desc_te: 'కింది సగం.', w: 100, h: 50, price: null },
   ] },
+  presenter: { name_en: 'Rajesh', name_te: 'రాజేష్', closed: 'images/presenter/closed.jpg', open: 'images/presenter/open.jpg', blink: 'images/presenter/blink.jpg' },
   subscription: { plans: [{ key: 'month', name_en: 'Monthly', name_te: 'నెలవారీ', desc_en: 'One month.', desc_te: 'ఒక నెల.', price: null }] },
 };
 
