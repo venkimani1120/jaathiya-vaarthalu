@@ -2,7 +2,7 @@
 
 This is the website for a Telugu daily newspaper. It has news pages in English and Telugu, an e-paper archive, and advertising and print-subscription pages. The design follows newspaperclub.com: hero carousel, icon value rows, card grids, promo bands and a multi-column footer.
 
-On this branch (`split-frontend-backend`) the site is **two Node services on Render**:
+On `main` the site is **two Node services on Render**:
 
 | Folder | Render service | What it does |
 |---|---|---|
@@ -36,15 +36,15 @@ The steps below use the same MongoDB Atlas cluster as the desk app. The website 
 1. **Make a read-only database user.** In MongoDB Atlas, open the desk app's project → **Database Access** → **Add New Database User**. Choose password login, name it `jv-web-reader`, generate a password, and under **Database User Privileges** pick **Specific Privileges** → `read` on the desk app's database (the name after `.mongodb.net/` in the desk app's `MONGODB_URI`, e.g. `jaathiya`). Save it.
 2. **Get the connection string.** In **Database** → **Connect** → **Drivers**, copy the `mongodb+srv://…` string, put in the new user and password, and add the database name before the `?`: `mongodb+srv://jv-web-reader:<password>@cluster0.xxxxx.mongodb.net/jaathiya?retryWrites=true&w=majority`.
 3. **Allow Render to connect.** In **Network Access**, Render must be allowed. If the desk app on Render already connects, its entry (often `0.0.0.0/0`) covers this site too. If not, add the outbound IP addresses Render shows for this service under **Connect → Outbound**.
-4. **Push this branch** to GitHub: `git push -u origin split-frontend-backend`.
-5. **Create both services from the Blueprint.** In the Render dashboard, choose **New → Blueprint**, connect the `jaathiya-vaarthalu` repo and pick the `split-frontend-backend` branch. Render reads `render.yaml`, which has two services, and asks for `MONGODB_URI`. Paste the string from step 2 and click **Apply**.
+4. **Push to `main`** on GitHub (or merge a pull request into it).
+5. **Create both services from the Blueprint.** In the Render dashboard, choose **New → Blueprint**, connect the `jaathiya-vaarthalu` repo and pick the `main` branch. Render reads `render.yaml`, which has two services, and asks for `MONGODB_URI`. Paste the string from step 2 and click **Apply**.
    *Without the Blueprint:* make two **New → Web Service**s from the repo and branch, Runtime **Node**, Build command `npm ci && npm test`, Start command `npm start`, Health check path `/healthz`: one with **Root Directory** `backend`, one with `frontend`. Add the environment variables listed for each in `render.yaml`.
 6. **Point the website at the API.** If Render gave the API service a different address than `https://jaathiya-vaarthalu-api.onrender.com` (shown at the top of its page), set the website service's `API_URL` to it.
 7. **Wait for the deploys.** Each build runs its tests. The API is live once its `/healthz` answers `ok`, which needs a successful read of MongoDB; if the connection string is wrong, the deploy fails and the log says `News read failed`. The website is live once it has read the API. Open `https://jaathiya-vaarthalu-web.onrender.com/`; an approved story in the desk app shows up within about 4 minutes.
 8. **Optional custom domain.** In the website service's **Settings → Custom Domains**, add the domain and the DNS records Render shows. Then set its environment variable `SITE_URL` to `https://<the domain>` so canonical links, the sitemap and RSS use it. The API service needs no domain.
 9. **Search Console.** Submit `sitemap.xml` and `news-sitemap.xml` in Google Search Console.
 
-Every push to `split-frontend-backend` redeploys the service whose folder changed: edits to `backend/content/` redeploy only the API (about 2 to 3 minutes). Render's free plan stops a service after 15 minutes without requests. The website's refreshes keep the API awake while the website is awake, but after a quiet spell the next visitor waits a minute or two while both start, and sees a "Starting" page meanwhile. For a public news site, use a paid instance type for both, which stays awake (and then `API_URL` can be the private address `http://jaathiya-vaarthalu-api:10000`).
+Every push to `main` redeploys the service whose folder changed: edits to `backend/content/` redeploy only the API (about 2 to 3 minutes). Render's free plan stops a service after 15 minutes without requests. The website's refreshes keep the API awake while the website is awake, but after a quiet spell the next visitor waits a minute or two while both start, and sees a "Starting" page meanwhile. For a public news site, use a paid instance type for both, which stays awake (and then `API_URL` can be the private address `http://jaathiya-vaarthalu-api:10000`).
 
 | Service | Variable | Meaning |
 |---|---|---|

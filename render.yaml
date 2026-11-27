@@ -10,7 +10,7 @@ services:
     rootDir: backend
     plan: free              # free instances sleep after 15 idle minutes; the website's refreshes keep it awake while the website is awake
     region: singapore       # closest Render region to India
-    branch: split-frontend-backend
+    branch: main
     buildCommand: npm ci && npm test
     startCommand: npm start
     healthCheckPath: /healthz
@@ -36,7 +36,7 @@ services:
     rootDir: frontend
     plan: free
     region: singapore
-    branch: split-frontend-backend
+    branch: main
     buildCommand: npm ci && npm test
     startCommand: npm start
     healthCheckPath: /healthz
