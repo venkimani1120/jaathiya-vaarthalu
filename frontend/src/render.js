@@ -67,7 +67,8 @@ function createSite({ site, cats, articles, editions, ads, siteUrl, now = new Da
   const currentIn = (slug) => inSec(current, slug);
   const edDays = [...new Set(editions.map((x) => x.date))].sort().reverse();
   const brk = current.filter((a) => a.breaking).slice(0, 8);
-  // A day's news bulletin: up to 10 stories, breaking news first, then newest first
+  // A day's news bulletin: up to 10 stories, breaking news first, then newest first (backend/src/bulletin.js pick()
+  // voices the same stories; keep the two in step)
   const BULLETIN_MAX = 10;
   const bulletinOf = (d) => { const l = byDay.get(d) || []; return [...l.filter((a) => a.breaking), ...l.filter((a) => !a.breaking)].slice(0, BULLETIN_MAX); };
   // WhatsApp needs the number with its country code; a 10-digit Indian mobile gets 91 in front
@@ -257,7 +258,8 @@ ${older.length ? `<h2>${T.epArchive}</h2><ul class="archive">${older.map((x) => 
   const bulletinPage = (L, d, path) => {
     const c = ctx(L), { T, u, fmtDay, dateForm, dayPager } = c;
     const items = bulletinOf(d), n = items.length, title = d === curDay && path === '/bulletin/' ? T.bulletin : T.bulletinOf(fmtDay(d));
-    const say = (a) => a.summary || plain(a.body, 280);
+    // The backend's script (what the voice reads, see backend/src/bulletin.js); before that, the summary or opening text
+    const say = (a) => a.script || a.summary || plain(a.body, 280);
     const thumb = (a, w, h, cls = '') => (a.image ? `<img class="${cls}" src="${esc(asset(a.image))}" alt="" loading="lazy" width="${w}" height="${h}">` : `<span class="ph ${cls}" aria-hidden="true">${icon('news', 'ic')}</span>`);
     const player = `<div class="player" role="region" aria-roledescription="${esc(T.blPlayer)}" aria-label="${esc(title)}">
 <div class="screen">

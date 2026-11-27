@@ -19,7 +19,8 @@ const story = (slug, title, date, o = {}) => ({ slug, title, summary: '', body: 
 function apiData() {
   const articles = [
     story('భారత్-ఘన-విజయం', 'భారత్ ఘన విజయం', '2026-10-10T03:30:00.000Z', { summary: 'సారాంశం', body: '<p>మొదటి పేరా</p>', author: 'రాజేష్', breaking: true, image: 'images/win.jpg' }),
-    story(ID, 'కొత్త రోడ్డు <b>', '2026-10-10T03:00:00.000Z', { summary: 'రూ.45 లక్షలు · ప్రారంభం', body: '<p>పేరా</p>', image: 'https://res.cloudinary.com/demo/image/upload/c_limit,w_1280,f_auto,q_auto/v1/a.jpg' }),
+    story(ID, 'కొత్త రోడ్డు <b>', '2026-10-10T03:00:00.000Z', { summary: 'రూ.45 లక్షలు · ప్రారంభం', body: '<p>పేరా</p>', image: 'https://res.cloudinary.com/demo/image/upload/c_limit,w_1280,f_auto,q_auto/v1/a.jpg',
+      script: 'కొత్త రోడ్డు. రూ.45 లక్షలు. ప్రారంభం. పేరా', audio: 'https://res.cloudinary.com/demo/video/upload/v1/jaathiya/bulletin/abc.mp3' }),
     story('health-tip', 'Health tip', '2026-10-01T02:30:00.000Z', { body: '<p>x</p>', section: 'health' }),
   ];
   for (let i = 21; i >= 1; i--) articles.push(story(`old-${i}`, `Old ${i}`, `2026-09-${String(i).padStart(2, '0')}T02:30:00.000Z`));

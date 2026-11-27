@@ -64,8 +64,9 @@ const now = new Date('2026-10-10T06:00:00Z'); // 11:30 in India
     const bl = read('bulletin/index.html');
     assert(bl.includes('<h1>News Bulletin</h1>') && bl.includes('src="/jv/js/bulletin.js"') && bl.includes('aria-current="page">News Bulletin<'));
     assert(bl.indexOf('భారత్ ఘన విజయం</h2>') < bl.indexOf('కొత్త రోడ్డు &lt;b&gt;</h2>') && !bl.includes('Old 1<'), "today's stories, breaking first");
-    assert(bl.includes('data-say="సారాంశం"') && bl.includes('class="playlist"') && bl.includes('data-i="1"') && bl.includes('voice reader is coming soon'));
-    assert(bl.includes('action="/jv/bulletin/"') && !bl.includes('data-audio'), 'no audio yet');
+    assert(bl.includes('data-say="సారాంశం"') && bl.includes('class="playlist"') && bl.includes('data-i="1"') && bl.includes('action="/jv/bulletin/"'));
+    assert(bl.includes('data-say="కొత్త రోడ్డు. రూ.45 లక్షలు. ప్రారంభం. పేరా" data-audio="https://res.cloudinary.com/demo/video/upload/v1/jaathiya/bulletin/abc.mp3"'), "the backend's script and audio");
+    assert(!bl.includes('voice reader is coming soon') && read('bulletin/2026-09-05/index.html').includes('voice reader is coming soon'), 'the note only where nothing is voiced');
     const blTe = read('te/bulletin/2026-09-05/index.html');
     assert(blTe.includes('వార్తా బులెటిన్: ') && blTe.includes('Old 5</h2>') && blTe.includes('href="/jv/te/article/old-5/"') && blTe.includes('href="/jv/te/bulletin/2026-09-04/"'));
     assert(home.includes('href="/jv/bulletin/"'), 'menu link');

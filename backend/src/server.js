@@ -7,7 +7,9 @@
 // API (all GET; JSON is UTF-8 and gzipped when asked for):
 //   /api/site       { generatedAt, site, cats, articles, editions, ads, images }: everything the pages need.
 //                   articles: { slug, title, summary, body, image, section, author, date, updated, breaking }
-//                   (section = a cats slug or ''; dates ISO), newest first; images: files under content/images/
+//                   (section = a cats slug or ''; dates ISO), newest first; images: files under content/images/.
+//                   Stories in a day's news bulletin also have { script, audio }: what the reader says, and its MP3
+//                   URL ('' until it is voiced; only when the voice is set up, see src/bulletin.js)
 //   /api/news/<id>  one desk story by its Mongo id, same shape as an articles item, for stories older than
 //                   NEWS_DAYS; 404 when missing, not approved or not yet due
 //   /images/<path>  the files in content/images/
@@ -20,19 +22,23 @@
 //   DESK_APP_URL     the desk app's address, for e-paper reader links (<app>/e/<link>)
 //   NEWS_DAYS        days of approved news in /api/site (default 90); older stories still open via /api/news/<id>
 //   REFRESH_SECONDS  how often the news source is read again (default 120)
+//   AZURE_SPEECH_KEY, AZURE_SPEECH_REGION, CLOUDINARY_URL  turn on the bulletin's voice (all three needed)
+//   AZURE_TTS_VOICE  default te-IN-ShrutiNeural (or te-IN-MohanNeural)
+//   BULLETIN_DAILY_CHARS  most characters voiced a day (default 20000), a spending limit
 // Without MONGODB_URI and NEWS_API_URL only content/ is served.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { load, remoteArticle } = require('./content');
+const { createVoicer } = require('./bulletin');
 
 const ROOT = path.join(__dirname, '..');
 const TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.pdf': 'application/pdf' };
 const JSON_TYPE = 'application/json; charset=utf-8';
 
-// A loaded story → its API shape (cat object → section slug; Dates become ISO strings in JSON)
-const toJson = ({ cat, ...a }) => ({ ...a, section: cat ? cat.slug : '' });
+// A loaded story → its API shape (cat object → section slug; Dates become ISO strings in JSON); voice = { script, audio }
+const toJson = ({ cat, ...a }, voice) => ({ ...a, section: cat ? cat.slug : '', ...voice });
 
 function listImages(dir, rel = '') {
   let out = [];
@@ -45,8 +51,17 @@ function listImages(dir, rel = '') {
 }
 
 // db: { fetchFromMongo({ days, base }), findNews(id) } from mongo.js (or remote.js wrapped alike); none = content/ only
-function createServer({ contentDir = path.join(ROOT, 'content'), db, days = 90, deskUrl = '', log = console } = {}) {
-  let cats = [], body, gz, loadedFromDb = !db, remote;
+// voicer: createVoicer() from bulletin.js, or none (the bulletin then has no scripts or audio)
+function createServer({ contentDir = path.join(ROOT, 'content'), db, days = 90, deskUrl = '', voicer, log = console } = {}) {
+  let cats = [], body, gz, loadedFromDb = !db, remote, data, voicing = Promise.resolve();
+
+  // /api/site, serialised and gzipped once per change
+  function serialise() {
+    const now = new Date();
+    const voices = voicer ? voicer.annotate(data.articles) : new Map();
+    body = Buffer.from(JSON.stringify({ generatedAt: now, ...data, articles: data.articles.map((a) => toJson(a, voices.get(a.slug))), images: listImages(path.join(contentDir, 'images')) }));
+    gz = zlib.gzipSync(body);
+  }
 
   // Reads content/ and the news source and swaps in the new data. If the news source fails, the last news is kept.
   // A content/ mistake throws (and stops the start).
@@ -54,11 +69,11 @@ function createServer({ contentDir = path.join(ROOT, 'content'), db, days = 90, 
     if (db) {
       try { remote = await db.fetchFromMongo({ days, base: deskUrl }); loadedFromDb = true; } catch (e) { log.error(`News read failed, keeping the last news: ${e.message}`); }
     }
-    const now = new Date();
-    const data = load(contentDir, now, remote);
+    data = load(contentDir, new Date(), remote);
     cats = data.cats;
-    body = Buffer.from(JSON.stringify({ generatedAt: now, ...data, articles: data.articles.map(toJson), images: listImages(path.join(contentDir, 'images')) }));
-    gz = zlib.gzipSync(body);
+    serialise();
+    // The day's bulletin is voiced in the background; new audio shows in /api/site as soon as it is made
+    if (voicer) voicing = voicer.run(data.articles).then((n) => { if (n) serialise(); }, (e) => log.error(`Bulletin voice failed: ${e.message}`));
     return data;
   }
 
@@ -101,7 +116,8 @@ function createServer({ contentDir = path.join(ROOT, 'content'), db, days = 90, 
     if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('Server error');
   }));
-  return { server, refresh };
+  // voiced(): the latest background voicing run (for tests)
+  return { server, refresh, voiced: () => voicing };
 }
 
 if (require.main === module) {
@@ -113,12 +129,20 @@ if (require.main === module) {
     const { fetchRemote } = require('./remote');
     db = { fetchFromMongo: () => fetchRemote(process.env.NEWS_API_URL, { days }), findNews: async () => null };
   }
-  const { server, refresh } = createServer({ db, days, deskUrl: process.env.DESK_APP_URL || '' });
+  const env = process.env;
+  let voicer = null;
+  if (env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION && env.CLOUDINARY_URL) {
+    const { azure, cloudinary } = require('./tts');
+    const voice = env.AZURE_TTS_VOICE || 'te-IN-ShrutiNeural';
+    voicer = createVoicer({ voice, tts: azure({ key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION, voice }), store: cloudinary(env.CLOUDINARY_URL),
+      dailyChars: Number(env.BULLETIN_DAILY_CHARS) || 20000 });
+  }
+  const { server, refresh } = createServer({ db, days, deskUrl: env.DESK_APP_URL || '', voicer });
   const every = Math.max(30, Number(process.env.REFRESH_SECONDS) || 120) * 1000;
   // A mistake in content/ stops the start, so Render keeps the previous deploy live
   refresh().then((data) => {
     const from = process.env.MONGODB_URI ? 'MongoDB' : process.env.NEWS_API_URL ? 'the desk app API' : 'content/ only';
-    server.listen(port, () => console.log(`API on port ${port} (${data.articles.length} stories, news from ${from})`));
+    server.listen(port, () => console.log(`API on port ${port} (${data.articles.length} stories, news from ${from}, bulletin voice ${voicer ? 'on' : 'off'})`));
     setInterval(() => refresh().catch((e) => console.error(`Refresh failed: ${e.message}`)), every).unref();
   }, (e) => { console.error(e.message); process.exit(1); });
   process.on('SIGTERM', () => server.close(() => (db && db.close ? db.close() : Promise.resolve()).finally(() => process.exit(0))));
