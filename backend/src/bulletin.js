@@ -49,6 +49,7 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
   let known = null;        // name → URL of the files already made
   let running = null;
   let spent = { day: '', chars: 0 };
+  const waiting = new Map(); // name → audio made but not yet uploaded (so a failed upload doesn't pay for speech again)
 
   // Every bulletin story (any day) → { script, audio }; audio is '' until its file exists
   function annotate(articles) {
@@ -72,15 +73,19 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
       if (made >= PER_RUN) break;
       const parts = script(a), name = hashOf(voice, parts), size = parts.join(' ').length;
       if (known.has(name)) continue;
-      if (spent.chars + size > dailyChars) { log.error(`Bulletin: daily limit of ${dailyChars} characters reached; the rest is voiced tomorrow`); break; }
+      if (!waiting.has(name) && spent.chars + size > dailyChars) { log.error(`Bulletin: daily limit of ${dailyChars} characters reached; the rest is voiced tomorrow`); break; }
       try {
-        const mp3 = await tts(parts);
-        spent.chars += size;
-        known.set(name, await store.upload(name, mp3));
+        if (!waiting.has(name)) {
+          waiting.set(name, await tts(parts));
+          spent.chars += size;
+        }
+        known.set(name, await store.upload(name, waiting.get(name)));
+        waiting.delete(name);
         made++;
       } catch (e) {
         log.error(`Bulletin: story ${a.slug} not voiced: ${e.message}`);
-        if (e.status === 429) break; // rate limited: the rest waits for the next refresh
+        // rate limited (429), or storage refused (401/403): the rest waits for the next refresh
+        if ([401, 403, 429].includes(e.status)) break;
       }
     }
     return made;

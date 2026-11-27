@@ -51,6 +51,13 @@ const quiet = { error() {} };
   let tries = 0;
   const limited = createVoicer({ tts: async () => { tries++; throw Object.assign(new Error('429'), { status: 429 }); }, store: { list: async () => new Map(), upload: async (n) => n }, voice: 'v', log: quiet });
   assert(await limited.run(day) === 0 && tries === 1, 'one try, then wait');
+  // A refused upload stops the run and keeps the audio, so the next run uploads it without asking for speech again
+  let spoken = 0, refuse = true;
+  const keep = createVoicer({ tts: async () => { spoken++; return Buffer.from('mp3'); }, voice: 'v', log: quiet,
+    store: { list: async () => new Map(), upload: async (n) => { if (refuse) throw Object.assign(new Error('403'), { status: 403 }); return `https://cdn.example/${n}.mp3`; } } });
+  assert(await keep.run(day) === 0 && spoken === 1, 'stops after the first refusal');
+  refuse = false;
+  assert(await keep.run(day) === 2 && spoken === 2, 'the kept audio is uploaded; only the other story is spoken');
   const listDown = createVoicer({ tts, store: { list: async () => { throw new Error('down'); }, upload: async (n) => n }, voice: 'v', log: quiet });
   await assert.rejects(listDown.run(day), /down/);
 
@@ -92,6 +99,7 @@ const quiet = { error() {} };
     const sig = crypto.createHash('sha1').update(`public_id=jaathiya/bulletin/ccc&timestamp=${f.get('timestamp')}secret1`).digest('hex');
     assert(f.get('signature') === sig && f.get('file').type === 'audio/mpeg' && !f.has('api_secret'), 'signed with the secret, which is never sent');
     assert.throws(() => cloudinary('https://demo'), /CLOUDINARY_URL/);
+    cloudinary('CLOUDINARY_URL=cloudinary://key1:secret1@demo'); // the whole line pasted as the value still works
 
     // Gemini: the style instruction and the script lines, Telugu and the voice; PCM comes back wrapped as WAV
     const g = gemini({ key: 'gk', voice: 'Kore', style: 'Read like a news anchor:' });

@@ -63,7 +63,8 @@ function wav(pcm, rate, channels = 1, bits = 16) {
 function cloudinary(cloudinaryUrl, folder = 'jaathiya/bulletin', { timeoutMs = 60000 } = {}) {
   const bad = () => new Error('CLOUDINARY_URL must look like cloudinary://<api key>:<api secret>@<cloud name> (Cloudinary console > Settings > API Keys > API environment variable)');
   let u;
-  try { u = new URL(String(cloudinaryUrl).trim()); } catch { throw bad(); }
+  // The console's copy button gives the whole line (CLOUDINARY_URL=cloudinary://…), so a pasted name is dropped
+  try { u = new URL(String(cloudinaryUrl).trim().replace(/^CLOUDINARY_URL=/, '')); } catch { throw bad(); }
   const key = decodeURIComponent(u.username), secret = decodeURIComponent(u.password), cloud = u.hostname;
   if (u.protocol !== 'cloudinary:' || !key || !secret || !cloud) throw bad();
   const api = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloud)}`;
@@ -96,7 +97,7 @@ function cloudinary(cloudinaryUrl, folder = 'jaathiya/bulletin', { timeoutMs = 6
     form.append('file', new Blob([audio], { type: isWav ? 'audio/wav' : 'audio/mpeg' }), `${name}.${isWav ? 'wav' : 'mp3'}`);
     for (const [k, v] of Object.entries({ ...params, api_key: key, signature })) form.append(k, v);
     const r = await fetch(`${api}/video/upload`, { method: 'POST', body: form, signal: AbortSignal.timeout(timeoutMs) });
-    if (!r.ok) throw new Error(`Cloudinary upload: HTTP ${r.status} ${(await r.text()).slice(0, 200)}`);
+    if (!r.ok) throw Object.assign(new Error(`Cloudinary upload: HTTP ${r.status} ${(await r.text()).slice(0, 200)}`), { status: r.status });
     return asMp3((await r.json()).secure_url);
   }
 
