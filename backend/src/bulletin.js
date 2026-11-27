@@ -1,8 +1,10 @@
 // The news bulletin's voice: what the reader says for each story, and the MP3s made from it.
 // The frontend's /bulletin/ page (bulletinOf() in frontend/src/render.js) shows up to MAX stories of a day, breaking
 // news first; pick() here must choose the same stories. Each one gets a script (headline, summary, opening sentences),
-// and the current day's are voiced once (src/tts.js: Gemini or Azure speech → Cloudinary). A file is named after a hash of its
-// voice and script, so a story is voiced again only when its text changes, and nothing is voiced twice after a restart.
+// and the current day's are voiced once (src/tts.js: Gemini or Azure speech → Cloudinary). A file is named after its
+// story and the voice settings, never its text: a story already in Cloudinary is always played from there and never
+// converted again, even after an edit (to voice an edited story again, delete its file in Cloudinary). Before voicing,
+// the folder is listed again, so files made earlier, after a restart or by another copy of the API are picked up.
 const crypto = require('crypto');
 
 const MAX = 10;          // stories in a day's bulletin (keep in step with BULLETIN_MAX in frontend/src/render.js)
@@ -41,7 +43,10 @@ function script(a) {
   return parts.filter(Boolean);
 }
 
-const hashOf = (voice, parts) => crypto.createHash('sha1').update(`${voice}\n${parts.join('\n')}`).digest('hex').slice(0, 20);
+const sha1 = (s) => crypto.createHash('sha1').update(s).digest('hex');
+// A story's file name: its id (desk stories) or a hash of its web address (content/ stories may be Telugu), then the
+// voice settings, so a new voice makes new files
+const nameOf = (voice, slug) => `${/^[a-z0-9-]{1,64}$/i.test(slug) ? slug : `s${sha1(slug).slice(0, 16)}`}-${sha1(voice).slice(0, 8)}`;
 
 // tts(parts) → MP3 Buffer; store: { list() → Map(name → url), upload(name, mp3) → url }; dailyChars caps what is
 // voiced per India day (a spending limit; it starts again after a restart).
@@ -57,8 +62,7 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
     const out = new Map();
     const days = [...new Set(articles.map((a) => istDay(a.date)))];
     for (const d of days) for (const a of pick(articles, d)) {
-      const parts = script(a);
-      out.set(a.slug, { script: parts.join(' '), audio: (known && known.get(hashOf(voice, parts))) || '' });
+      out.set(a.slug, { script: script(a).join(' '), audio: (known && known.get(nameOf(voice, a.slug))) || '' });
     }
     return out;
   }
@@ -66,15 +70,17 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
   // Voices the current day's stories that have no file yet. Resolves to the number of new files.
   async function voiceDay(articles) {
     if (Date.now() < pausedUntil) return 0;
-    if (!known) known = await store.list(); // if the list fails, nothing is voiced (so nothing is paid for twice)
     const day = articles.length ? istDay(articles[0].date) : '';
+    const todo = () => pick(articles, day).filter((a) => !known.has(nameOf(voice, a.slug)));
+    // Look in Cloudinary before converting anything: on the first run, and whenever a story seems to have no file.
+    // If the list fails, nothing is converted (so nothing is paid for twice).
+    if (!known || todo().length) known = await store.list();
     const today = istDay(new Date());
     if (spent.day !== today) spent = { day: today, chars: 0 };
     let made = 0;
-    for (const a of pick(articles, day)) {
+    for (const a of todo()) {
       if (made >= PER_RUN) break;
-      const parts = script(a), name = hashOf(voice, parts), size = parts.join(' ').length;
-      if (known.has(name)) continue;
+      const parts = script(a), name = nameOf(voice, a.slug), size = parts.join(' ').length;
       if (!waiting.has(name) && spent.chars + size > dailyChars) { log.error(`Bulletin: daily limit of ${dailyChars} characters reached; the rest is voiced tomorrow`); break; }
       try {
         if (!waiting.has(name)) {
@@ -103,4 +109,4 @@ function createVoicer({ tts, store, voice, dailyChars = 20000, log = console }) 
   return { annotate, run };
 }
 
-module.exports = { createVoicer, pick, script, hashOf, MAX, CHARS };
+module.exports = { createVoicer, pick, script, nameOf, MAX, CHARS };

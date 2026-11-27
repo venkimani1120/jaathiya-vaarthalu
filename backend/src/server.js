@@ -77,7 +77,8 @@ function createServer({ contentDir = path.join(ROOT, 'content'), db, days = 90, 
     cats = data.cats;
     serialise();
     // The day's bulletin is voiced in the background; new audio shows in /api/site as soon as it is made
-    if (voicer) voicing = voicer.run(data.articles).then((n) => { if (n) serialise(); }, (e) => log.error(`Bulletin voice failed: ${e.message}`));
+    // (serialised again after every run, which also brings in files found in Cloudinary)
+    if (voicer) voicing = voicer.run(data.articles).then(() => serialise(), (e) => log.error(`Bulletin voice failed: ${e.message}`));
     return data;
   }
 

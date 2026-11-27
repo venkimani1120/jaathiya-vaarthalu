@@ -35,7 +35,7 @@ Needs Node 22 or newer. From the repo root, `npm run dev` starts this and the we
 | `BULLETIN_VOICE` | `off` turns voicing off even when the keys are set. Use it in a local `.env`: it shares the live site's daily quota. |
 | `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_TTS_VOICE` | Azure speech instead of Gemini: a Speech resource's key and region (e.g. `centralindia`), and the voice (default `te-IN-ShrutiNeural`). |
 
-Changing the speech service, model, voice or style voices the current day's bulletin again.
+Changing the speech service, model, voice or style makes new files for the current day's bulletin (10 conversions).
 | `BULLETIN_DAILY_CHARS` | The most characters voiced in a day (default 20000), a spending limit. |
 
 With neither `MONGODB_URI` nor `NEWS_API_URL`, only `content/` is served.
@@ -62,7 +62,7 @@ The website's `/bulletin/` page plays each story's audio. After every refresh, i
 
 1. `pick()` takes the current day's bulletin: up to 10 stories, breaking news first, then newest first. This must match `bulletinOf()` in `frontend/src/render.js`.
 2. `script()` writes what the reader says: the headline, the summary, then whole opening sentences, up to 600 characters (the dateline the website adds is left out). The story text is read as written.
-3. A story whose script has no audio yet is read aloud and uploaded to Cloudinary as `jaathiya/bulletin/<hash>`. The hash covers the voice and the script, so a story is voiced again only when its text changes. On start, the existing files are listed once, so a restart voices nothing twice.
+3. A story with no file yet is read aloud and uploaded to Cloudinary as `jaathiya/bulletin/<story id>-<voice>`. The name comes from the story and the voice settings, never from its text. **A story that's already in Cloudinary is always played from there and never converted again**, even after it's edited (the caption shows the edited text). To voice an edited story again, delete its file in Cloudinary's Media Library (`jaathiya/bulletin/<story id>-…`). Before converting anything, the API lists the folder again. So files made earlier, before a restart, or by another copy of the API (for example local development) are picked up instead of converted. When every story in the bulletin already has a file, Cloudinary isn't asked at all.
    - **Gemini** (default): the style instruction, then the headline, summary and text on separate lines, in Telugu (`te-IN`). Gemini returns WAV audio. It's kept as WAV, and listeners get it as MP3, because Cloudinary converts it when the address ends in `.mp3`. If the free tier's rate limit answers 429, the run stops and the rest is voiced on the next refresh.
    - **Azure**: a `te-IN` neural voice through SSML, with 600 ms pauses between the parts, straight to MP3.
 4. `/api/site` then carries `script` and `audio` for those stories, and the website picks them up on its next refresh (within about 4 minutes).

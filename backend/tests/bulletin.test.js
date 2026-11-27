@@ -2,7 +2,7 @@
 // Cloudinary requests (with a stand-in fetch) and the script/audio fields in /api/site. Run: npm test
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { createVoicer, pick, script, hashOf, CHARS } = require('../src/bulletin');
+const { createVoicer, pick, script, nameOf, CHARS } = require('../src/bulletin');
 const { azure, gemini, wav, cloudinary } = require('../src/tts');
 const { createServer } = require('../src/server');
 
@@ -23,13 +23,15 @@ const quiet = { error() {} };
   const long = art('l', '2026-10-10T05:00:00Z', { body: `<p>${'పదం '.repeat(400)}.</p>` });
   const ls = script(long).join(' ');
   assert(ls.length <= CHARS + 1 && ls.endsWith('…'), 'a long first sentence is cut to fit');
-  assert.notStrictEqual(hashOf('te-IN-ShrutiNeural', script(desk)), hashOf('te-IN-MohanNeural', script(desk)), 'the voice is part of the name');
+  assert.notStrictEqual(nameOf('te-IN-ShrutiNeural', 'a'.repeat(24)), nameOf('te-IN-MohanNeural', 'a'.repeat(24)), 'the voice is part of the name');
+  assert(nameOf('v', 'a'.repeat(24)).startsWith('a'.repeat(24) + '-') && /^s[0-9a-f]{16}-[0-9a-f]{8}$/.test(nameOf('v', 'భారత్-విజయం')), 'story id, or a hash of a Telugu address');
 
-  // ---- voicing: once per script, current day only, a failure doesn't stop the rest ----
-  const files = new Map([[hashOf('v', script(day[2])), 'https://cdn.example/old.mp3']]); // a story voiced before
+  // ---- voicing: once per story, current day only, a failure doesn't stop the rest ----
+  const files = new Map([[nameOf('v', 'c'), 'https://cdn.example/old.mp3']]); // a story voiced before
   const said = [];
   let fail = 'a';
-  const store = { list: async () => new Map(files), upload: async (name) => `https://cdn.example/${name}.mp3` };
+  let lists = 0;
+  const store = { list: async () => { lists++; return new Map(files); }, upload: async (name) => { files.set(name, `https://cdn.example/${name}.mp3`); return files.get(name); } };
   const tts = async (parts) => { if (parts[0] === `శీర్షిక ${fail}`) throw new Error('busy'); said.push(parts[0]); return Buffer.from('mp3'); };
   const v = createVoicer({ tts, store, voice: 'v', log: quiet });
   assert.strictEqual(v.annotate(day).get('b').audio, '', 'no audio before the first run');
@@ -40,9 +42,21 @@ const quiet = { error() {} };
   assert.strictEqual(notes.get('b').script, 'శీర్షిక b మొదటి వాక్యం. రెండో వాక్యం.');
   fail = '';
   assert.strictEqual(await v.run(day), 1, 'the failed one is tried again');
-  assert.strictEqual(await v.run(day), 0, 'nothing is voiced twice');
+  said.length = 0;
+  lists = 0;
+  assert(await v.run(day) === 0 && lists === 0, 'nothing is voiced twice; Cloudinary is not asked when every story has a file');
   day[0].title = 'కొత్త శీర్షిక';
-  assert.strictEqual(await v.run(day), 1, 'a changed story is voiced again');
+  day[0].summary = 'మార్చిన సారాంశం';
+  assert(await v.run(day) === 0 && said.length === 0, 'an edited story keeps its file: no new conversion');
+  assert.strictEqual(v.annotate(day).get('a').script, 'కొత్త శీర్షిక మార్చిన సారాంశం మొదటి వాక్యం. రెండో వాక్యం.', 'the caption follows the edit');
+
+  // A new copy of the API (a restart) finds every file in Cloudinary and converts nothing
+  const restarted = createVoicer({ tts, store, voice: 'v', log: quiet });
+  assert(await restarted.run(day) === 0 && said.length === 0 && restarted.annotate(day).get('a').audio.startsWith('https://cdn.example/'));
+  // A file made elsewhere (another copy of the API) is found before converting
+  const day2 = [...day, art('e', '2026-10-10T07:00:00Z')];
+  files.set(nameOf('v', 'e'), 'https://cdn.example/e-elsewhere.mp3');
+  assert(await restarted.run(day2) === 0 && said.length === 0 && restarted.annotate(day2).get('e').audio === 'https://cdn.example/e-elsewhere.mp3', 'looked up in Cloudinary, not converted');
 
   const capped = createVoicer({ tts, store: { list: async () => new Map(), upload: async (n) => n }, voice: 'v', dailyChars: 50, log: quiet });
   said.length = 0;
@@ -131,5 +145,18 @@ const quiet = { error() {} };
     const a = await site();
     assert(a.script === 'ఈ రోజు వార్త ముఖ్యాంశం వివరాలు ఇవి.' && a.audio.startsWith('https://cdn.example/'), 'audio shows once voiced');
   } finally { server.close(); }
+
+  // After a restart, a story already in Cloudinary shows its audio straight away, without a conversion
+  let converted = 0;
+  const again = createVoicer({ tts: async () => { converted++; return Buffer.from('mp3'); }, voice: 'v', log: quiet,
+    store: { list: async () => new Map([[nameOf('v', fresh[0].id), 'https://cdn.example/kept.mp3']]), upload: async (n) => n } });
+  const second = createServer({ contentDir: require('path').join(__dirname, '..', 'content'), db, voicer: again, log: quiet });
+  await second.refresh();
+  await second.voiced();
+  await new Promise((r) => second.server.listen(0, r));
+  try {
+    const d = await (await fetch(`http://127.0.0.1:${second.server.address().port}/api/site`)).json();
+    assert(d.articles.find((x) => x.slug === fresh[0].id).audio === 'https://cdn.example/kept.mp3' && converted === 0, 'audio from Cloudinary after a restart');
+  } finally { second.server.close(); }
   console.log('all bulletin checks passed');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
