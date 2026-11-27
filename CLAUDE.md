@@ -11,6 +11,8 @@ On the `main` branch it is **two Node services on Render** (`render.yaml`, one p
 - **`backend/`** (`jaathiya-vaarthalu-api`): owns all data. Checks `backend/content/` (JSON) and reads approved news and published e-papers from the news desk app's **MongoDB** (separate repo `jaathiya-vaartalu-studio-app`; photos on Cloudinary), and serves them as a JSON API. Its only npm dependency is `mongodb`; keep it that way.
 - **`frontend/`** (`jaathiya-vaarthalu-web`): the public website. Renders every page from the backend API and serves `public/`. No npm dependencies and no database access; keep it that way. Browser JS stays plain files under `frontend/public/js/` (no framework, no bundler).
 
+Docs: the root `README.md` (overview, running locally, deploying on Render), `backend/README.md` (API contract, environment, news sources) and `frontend/README.md` (pages and routes, environment, code, static build); keep each in step with changes to its folder.
+
 The two only talk over HTTP; never `require()` across the folders (each is deployed from its own root). The static build (`frontend/src/build.js` → `frontend/dist/`, run by hand with `npm run build`; no workflow publishes it) still works and shares all templates.
 
 ## Commands
