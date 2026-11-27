@@ -28,6 +28,7 @@ Needs Node 22 or newer. From the repo root, `npm run dev` starts this and the ba
 - **Sections** (`/category/<slug>/`): the day's stories in that section, 20 per page.
 - **Today's news:** the home and section pages show only today's news (India time). Until something is published today, they show the latest day that has news, with a note saying so.
 - **Old news** (`/old-news/`): a date filter and the earlier days with their story counts. Each day is at `/old-news/<YYYY-MM-DD>/`, with links to the earlier and later day. It covers the backend's `NEWS_DAYS` (90 days).
+- **News Bulletin** (`/bulletin/`): the day's top 10 stories (breaking first) in a video-style player: each story's photo and headline as a slide, with play/pause, previous/next, a progress bar, speed, captions, a playlist and lock-screen controls (`public/js/bulletin.js`). Past days are at `/bulletin/<YYYY-MM-DD>/`, with the same date filter as Old news. A story with an `audio` URL is played aloud; until the voice reader (Azure text-to-speech in the backend) is added, each story stays up for its caption's reading time. Without JavaScript the slides are a swipeable strip and the playlist links to the stories.
 - **Article** (`/article/<slug>/`): stories older than `NEWS_DAYS` are looked up by their id, so old links keep working.
 - **E-paper** (`/epaper/`): the latest edition, a date filter and older editions. Each date is at `/epaper/<YYYY-MM-DD>/`. PDFs open from GitHub Releases, and desk editions in the desk app's reader.
 - **Search** (`/search/`): searches `search-index.json` (the newest 2,000 stories) in the browser. Needs JavaScript and at least 3 characters.
@@ -42,7 +43,7 @@ A date with no news or edition shows a "nothing on this date" page that search e
 - **`src/i18n.js`**: all UI text, in English and Telugu. Add any new text in both. Article text is shown as written.
 - **`src/server.js`**: reads the API on start and every `REFRESH_SECONDS`, renders a page on its first request and keeps up to 2,000 until the next refresh. If the API fails, the last site is kept. `/healthz` and the pages answer 503 ("Starting") until the first read. `/images/*` is passed through to the backend so pages keep one address.
 - **`src/build.js`**: the optional static build (below).
-- **`public/js/site.js`**: the hero carousel, the date filter and the WhatsApp enquiry form. **`public/js/search.js`**: search. Plain browser JS, no framework or bundler.
+- **`public/js/site.js`**: the hero carousel, the date filter and the WhatsApp enquiry form. **`public/js/search.js`**: search. **`public/js/bulletin.js`**: the news bulletin player. Plain browser JS, no framework or bundler.
 - **`public/css/tokens.css`**: colours, fonts and sizes ("royal light" palette). Keep it in step with `../design/tokens.css`.
 - **`public/fonts/`**: Inter (English) and Playfair Display are included. The Telugu font files to add are listed in `public/fonts/README.txt`.
 
